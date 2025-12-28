@@ -40,6 +40,7 @@ import {
   LogOut,
   Receipt,
   Settings,
+  TrendingUp,
   Users,
 } from "lucide-react";
 import Link from "next/link";
@@ -76,6 +77,11 @@ const businessDevItems = [
     title: "Portfolio",
     icon: BarChart3,
     href: "/business-development/portfolio",
+  },
+  {
+    title: "Market Listings",
+    icon: TrendingUp,
+    href: "/business-development/market-listings",
   },
 ];
 
