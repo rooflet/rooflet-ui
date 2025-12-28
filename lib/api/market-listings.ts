@@ -1,5 +1,8 @@
 import { apiRequest } from "../api-client";
-import type { MarketListingResponse } from "./types";
+import type {
+  MarketListingResponse,
+  MarketListingWithPreferenceResponse,
+} from "./types";
 
 export const marketListingsApi = {
   // Get all market listings
@@ -89,19 +92,9 @@ export const marketListingsApi = {
     );
   },
 
-  // Get all favorite listings
-  getFavorites: async (): Promise<MarketListingResponse[]> => {
-    return apiRequest<MarketListingResponse[]>(
-      "/api/market-listings/favorites",
-      {
-        method: "GET",
-      }
-    );
-  },
-
   // Get all interested listings
-  getInterested: async (): Promise<MarketListingResponse[]> => {
-    return apiRequest<MarketListingResponse[]>(
+  getInterested: async (): Promise<MarketListingWithPreferenceResponse[]> => {
+    return apiRequest<MarketListingWithPreferenceResponse[]>(
       "/api/market-listings/interested",
       {
         method: "GET",
@@ -109,32 +102,11 @@ export const marketListingsApi = {
     );
   },
 
-  // Toggle favorite status
-  toggleFavorite: async (id: string): Promise<MarketListingResponse> => {
-    return apiRequest<MarketListingResponse>(
-      `/api/market-listings/${id}/favorite/toggle`,
-      {
-        method: "POST",
-      }
-    );
-  },
-
-  // Set favorite status
-  setFavorite: async (
-    id: string,
-    isFavorite: boolean
-  ): Promise<MarketListingResponse> => {
-    return apiRequest<MarketListingResponse>(
-      `/api/market-listings/${id}/favorite?isFavorite=${isFavorite}`,
-      {
-        method: "PUT",
-      }
-    );
-  },
-
   // Toggle interested status
-  toggleInterested: async (id: string): Promise<MarketListingResponse> => {
-    return apiRequest<MarketListingResponse>(
+  toggleInterested: async (
+    id: string
+  ): Promise<MarketListingWithPreferenceResponse> => {
+    return apiRequest<MarketListingWithPreferenceResponse>(
       `/api/market-listings/${id}/interested/toggle`,
       {
         method: "POST",
@@ -146,8 +118,8 @@ export const marketListingsApi = {
   setInterested: async (
     id: string,
     isInterested: boolean
-  ): Promise<MarketListingResponse> => {
-    return apiRequest<MarketListingResponse>(
+  ): Promise<MarketListingWithPreferenceResponse> => {
+    return apiRequest<MarketListingWithPreferenceResponse>(
       `/api/market-listings/${id}/interested?isInterested=${isInterested}`,
       {
         method: "PUT",

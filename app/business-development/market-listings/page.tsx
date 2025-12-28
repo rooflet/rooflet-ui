@@ -47,7 +47,6 @@ import {
   DollarSign,
   ExternalLink,
   Filter,
-  Heart,
   Home,
   MapPin,
   Maximize,
@@ -78,7 +77,6 @@ export default function MarketListingsPage() {
   const [filterMinBaths, setFilterMinBaths] = useState<string>("");
   const [filterCity, setFilterCity] = useState<string>("");
   const [filterState, setFilterState] = useState<string>("");
-  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [showInterestedOnly, setShowInterestedOnly] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
 
@@ -114,7 +112,6 @@ export default function MarketListingsPage() {
     filterMinBaths,
     filterCity,
     filterState,
-    showFavoritesOnly,
     showInterestedOnly,
     searchQuery,
     sortField,
@@ -190,11 +187,6 @@ export default function MarketListingsPage() {
       filtered = filtered.filter((l) =>
         l.state?.toLowerCase().includes(filterState.toLowerCase())
       );
-    }
-
-    // Favorites filter
-    if (showFavoritesOnly) {
-      filtered = filtered.filter((l) => l.isFavorite);
     }
 
     // Interested filter
@@ -275,7 +267,6 @@ export default function MarketListingsPage() {
     setFilterMinBaths("");
     setFilterCity("");
     setFilterState("");
-    setShowFavoritesOnly(false);
     setShowInterestedOnly(false);
     setSearchQuery("");
     setSortField(null);
@@ -301,30 +292,6 @@ export default function MarketListingsPage() {
     ) : (
       <ArrowUpDown className="ml-2 h-4 w-4 text-primary rotate-180" />
     );
-  };
-
-  const toggleFavorite = async (id: string) => {
-    try {
-      const updated = await marketListingsApi.toggleFavorite(id);
-      setListings((prev) =>
-        prev.map((l) =>
-          l.id === id ? { ...l, isFavorite: updated.isFavorite } : l
-        )
-      );
-      if (selectedListing?.id === id) {
-        setSelectedListing({
-          ...selectedListing,
-          isFavorite: updated.isFavorite,
-        });
-      }
-    } catch (error) {
-      console.error("Failed to toggle favorite:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update favorite status.",
-        variant: "destructive",
-      });
-    }
   };
 
   const toggleInterested = async (id: string) => {
@@ -395,14 +362,6 @@ export default function MarketListingsPage() {
               className="h-9"
             />
           </div>
-          <Button
-            variant={showFavoritesOnly ? "default" : "outline"}
-            size="sm"
-            onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-          >
-            <Heart className="mr-2 h-4 w-4" />
-            Favorites {showFavoritesOnly && `(${filteredListings.length})`}
-          </Button>
           <Button
             variant={showInterestedOnly ? "default" : "outline"}
             size="sm"
@@ -586,19 +545,6 @@ export default function MarketListingsPage() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Favorites
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {listings.filter((l) => l.isFavorite).length}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
                 Interested
               </CardTitle>
             </CardHeader>
@@ -658,7 +604,6 @@ export default function MarketListingsPage() {
                   filterStatus !== "all" ||
                   filterMinPrice ||
                   filterMaxPrice ||
-                  showFavoritesOnly ||
                   showInterestedOnly) && (
                   <Button
                     variant="outline"
@@ -760,23 +705,6 @@ export default function MarketListingsPage() {
                       >
                         <TableCell>
                           <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleFavorite(listing.id);
-                              }}
-                            >
-                              <Heart
-                                className={`h-3 w-3 ${
-                                  listing.isFavorite
-                                    ? "fill-red-500 text-red-500"
-                                    : ""
-                                }`}
-                              />
-                            </Button>
                             <Button
                               variant="ghost"
                               size="sm"
@@ -902,20 +830,6 @@ export default function MarketListingsPage() {
                     </DialogDescription>
                   </div>
                   <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => toggleFavorite(selectedListing.id)}
-                    >
-                      <Heart
-                        className={`h-4 w-4 mr-2 ${
-                          selectedListing.isFavorite
-                            ? "fill-red-500 text-red-500"
-                            : ""
-                        }`}
-                      />
-                      {selectedListing.isFavorite ? "Unfavorite" : "Favorite"}
-                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
