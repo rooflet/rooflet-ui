@@ -1,0 +1,206 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Rooflet Theme - Cute yet professional with analytical precision */
+:root {
+  /* Reverting to purple/cyan color scheme */
+  --background: oklch(0.99 0.002 280);
+  --foreground: oklch(0.15 0.015 280);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.15 0.015 280);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.15 0.015 280);
+
+  /* Vibrant purple primary - whimsical yet professional */
+  --primary: oklch(0.6 0.24 280);
+  --primary-foreground: oklch(0.99 0 0);
+
+  --secondary: oklch(0.95 0.01 280);
+  --secondary-foreground: oklch(0.15 0.015 280);
+
+  --muted: oklch(0.96 0.005 280);
+  --muted-foreground: oklch(0.48 0.015 280);
+
+  /* Bright cyan accent for energy and precision */
+  --accent: oklch(0.7 0.2 195);
+  --accent-foreground: oklch(0.99 0 0);
+
+  --destructive: oklch(0.58 0.28 25);
+  --destructive-foreground: oklch(0.99 0 0);
+
+  --border: oklch(0.9 0.005 280);
+  --input: oklch(0.9 0.005 280);
+  --ring: oklch(0.6 0.24 280);
+
+  /* Analytical chart colors with purple/cyan palette */
+  --chart-1: oklch(0.6 0.24 280); /* Purple */
+  --chart-2: oklch(0.7 0.2 195); /* Cyan */
+  --chart-3: oklch(0.65 0.22 160); /* Teal */
+  --chart-4: oklch(0.7 0.18 90); /* Green */
+  --chart-5: oklch(0.62 0.2 320); /* Pink */
+
+  --radius: 0.875rem;
+
+  --sidebar: oklch(0.99 0.002 280);
+  --sidebar-foreground: oklch(0.15 0.015 280);
+  --sidebar-primary: oklch(0.6 0.24 280);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.95 0.01 280);
+  --sidebar-accent-foreground: oklch(0.15 0.015 280);
+  --sidebar-border: oklch(0.9 0.005 280);
+  --sidebar-ring: oklch(0.6 0.24 280);
+}
+
+.dark {
+  /* Rooflet Dark Mode - Purple/cyan theme with excellent contrast */
+  --background: oklch(0.13 0.02 280);
+  --foreground: oklch(0.98 0.003 280);
+
+  --card: oklch(0.18 0.022 280);
+  --card-foreground: oklch(0.98 0.003 280);
+
+  --popover: oklch(0.18 0.022 280);
+  --popover-foreground: oklch(0.98 0.003 280);
+
+  /* Brighter purple for dark mode visibility */
+  --primary: oklch(0.72 0.26 280);
+  --primary-foreground: oklch(0.13 0.02 280);
+
+  --secondary: oklch(0.22 0.02 280);
+  --secondary-foreground: oklch(0.98 0.003 280);
+
+  --muted: oklch(0.22 0.02 280);
+  --muted-foreground: oklch(0.72 0.015 280);
+
+  /* Bright cyan accent that pops in dark mode */
+  --accent: oklch(0.78 0.22 195);
+  --accent-foreground: oklch(0.13 0.02 280);
+
+  --destructive: oklch(0.65 0.3 25);
+  --destructive-foreground: oklch(0.99 0 0);
+
+  --border: oklch(0.3 0.022 280);
+  --input: oklch(0.3 0.022 280);
+  --ring: oklch(0.72 0.26 280);
+
+  /* Vibrant chart colors with purple/cyan palette */
+  --chart-1: oklch(0.75 0.28 280); /* Brighter purple */
+  --chart-2: oklch(0.8 0.24 195); /* Brighter cyan */
+  --chart-3: oklch(0.75 0.24 160); /* Brighter teal */
+  --chart-4: oklch(0.78 0.2 90); /* Brighter green */
+  --chart-5: oklch(0.72 0.24 320); /* Brighter pink */
+
+  --sidebar: oklch(0.15 0.021 280);
+  --sidebar-foreground: oklch(0.98 0.003 280);
+  --sidebar-primary: oklch(0.72 0.26 280);
+  --sidebar-primary-foreground: oklch(0.13 0.02 280);
+  --sidebar-accent: oklch(0.22 0.02 280);
+  --sidebar-accent-foreground: oklch(0.98 0.003 280);
+  --sidebar-border: oklch(0.3 0.022 280);
+  --sidebar-ring: oklch(0.72 0.26 280);
+}
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  /* Make placeholder text much more subtle for better UX */
+  input::placeholder,
+  textarea::placeholder,
+  select::placeholder,
+  [data-placeholder]:not([data-state="open"]) {
+    color: oklch(from var(--muted-foreground) l c h / 0.4);
+  }
+
+  .dark input::placeholder,
+  .dark textarea::placeholder,
+  .dark select::placeholder,
+  .dark [data-placeholder]:not([data-state="open"]) {
+    color: oklch(from var(--muted-foreground) l c h / 0.3);
+  }
+
+  /* Ensure required field asterisks are prominently red and easily visible */
+  .text-destructive,
+  .text-destructive * {
+    color: var(--destructive) !important;
+    font-weight: 600 !important;
+  }
+
+  /* Additional styling for select placeholders */
+  [data-slot="select-trigger"][data-placeholder] {
+    color: oklch(from var(--muted-foreground) l c h / 0.4);
+  }
+
+  .dark [data-slot="select-trigger"][data-placeholder] {
+    color: oklch(from var(--muted-foreground) l c h / 0.3);
+  }
+
+  /* Hide scrollbar while maintaining scroll functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+  }
+
+  /* Hide all scrollbars globally */
+  * {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+
+  *::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+  }
+}
