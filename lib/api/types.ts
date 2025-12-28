@@ -330,3 +330,44 @@ export interface AddPortfolioMemberRequest {
 export interface UpdatePortfolioMemberRoleRequest {
   role: PortfolioRole; // required
 }
+
+// Market Listings types
+export interface MarketListingResponse {
+  id: string; // format: uuid
+  source: string; // Listing source
+  sourceListingId: string; // External listing ID from the source
+  sourceUrl?: string; // URL to the listing on the source website
+  sourceMlsNumber?: string; // MLS listing number if available
+  saleType?: string; // Sale type
+  listingStatus?: string; // Current listing status
+  soldDate?: string; // format: date
+  listDate?: string; // format: date
+  daysOnMarket?: number; // format: int32
+  address?: string; // Full address as provided by source
+  address1?: string; // Parsed primary address
+  address2?: string; // Parsed secondary address (unit, apt, etc.)
+  city?: string;
+  state?: string; // State abbreviation
+  zipCode?: string;
+  location?: string; // Neighborhood or area name
+  latitude?: number; // Geographic latitude
+  longitude?: number; // Geographic longitude
+  propertyType?: string; // Type of property
+  bedrooms?: number; // format: int32
+  bathrooms?: number;
+  squareFeet?: number; // format: int32 - Interior square footage
+  lotSize?: number; // format: int32 - Lot size in square feet
+  yearBuilt?: number; // format: int32
+  price?: number; // Current listing price or sold price
+  pricePerSqft?: number; // Price per square foot
+  originalListPrice?: number; // Original listing price
+  hoaFee?: number; // Monthly HOA fee
+  nextOpenHouseStart?: string; // format: date-time
+  nextOpenHouseEnd?: string; // format: date-time
+  isFavorite: boolean; // User favorited flag
+  isInterested: boolean; // User interested flag
+  rawData?: string; // JSON/text storage for additional source-specific fields
+  createdAt: string; // format: date-time
+  updatedAt: string; // format: date-time
+  lastScrapedAt?: string; // format: date-time
+}
