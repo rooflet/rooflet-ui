@@ -380,8 +380,6 @@ export default function MarketListingsPage() {
   return (
     <div className="flex-1 overflow-y-auto">
       <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-4">
-        <SidebarTrigger />
-        <Separator orientation="vertical" className="h-6" />
         <div className="flex-1">
           <h1 className="text-xl font-semibold">Market Listings</h1>
           <p className="text-sm text-muted-foreground">
