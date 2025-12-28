@@ -29,11 +29,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <Script
-        defer
-        src="https://tracking.quincywebdev.com/script.js"
-        data-website-id="c4d24cd2-ee6e-4f9f-84e6-83ca4a7d5bcc"
-      />
+      {process.env.NEXT_PUBLIC_ANALYTICS_SCRIPT_URL &&
+        process.env.NEXT_PUBLIC_ANALYTICS_WEBSITE_ID && (
+          <Script
+            defer
+            src={process.env.NEXT_PUBLIC_ANALYTICS_SCRIPT_URL}
+            data-website-id={process.env.NEXT_PUBLIC_ANALYTICS_WEBSITE_ID}
+          />
+        )}
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
         <ReduxProvider>
           <ThemeProvider defaultTheme="dark">

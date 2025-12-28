@@ -4,7 +4,7 @@
   "description": "A modern property management dashboard for landlords",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/rooflet-ui.git"
+    "url": "https://github.com/rooflet/rooflet-ui.git"
   },
   "keywords": [
     "property-management",
