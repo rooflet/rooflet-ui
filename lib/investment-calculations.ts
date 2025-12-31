@@ -174,3 +174,91 @@ export function formatCurrency(value: number): string {
 export function formatPercentage(value: number, decimals: number = 1): string {
   return `${value.toFixed(decimals)}%`;
 }
+
+/**
+ * Calculate the 2% rule
+ * The 2% rule states that monthly rent should be at least 2% of purchase price
+ * This is a more aggressive metric than the 1% rule
+ */
+export function meets2PercentRule(
+  monthlyRent: number,
+  purchasePrice: number
+): boolean {
+  if (purchasePrice <= 0) return false;
+  const twoPercent = purchasePrice * 0.02;
+  return monthlyRent >= twoPercent;
+}
+
+/**
+ * Calculate the 50% rule
+ * The 50% rule estimates that operating expenses will be ~50% of rental income
+ * Returns true if net operating income (after 50% expenses) is positive
+ */
+export function meets50PercentRule(
+  monthlyRent: number,
+  monthlyMortgagePayment: number
+): boolean {
+  const estimatedExpenses = monthlyRent * 0.5;
+  const netOperatingIncome = monthlyRent - estimatedExpenses;
+  return netOperatingIncome > monthlyMortgagePayment;
+}
+
+/**
+ * Calculate Price-to-Rent Ratio
+ * Lower is better - ideal range is 1-15
+ * Below 15: Generally favorable for buying
+ * 15-20: Neutral
+ * Above 20: Generally favorable for renting
+ */
+export function calculatePriceToRentRatio(
+  purchasePrice: number,
+  monthlyRent: number
+): number {
+  if (monthlyRent <= 0) return 0;
+  const annualRent = monthlyRent * 12;
+  return purchasePrice / annualRent;
+}
+
+/**
+ * Calculate Cap Rate (Capitalization Rate)
+ * Cap Rate = (Net Operating Income / Property Value) * 100
+ * NOI = Annual Rent - Operating Expenses (estimated at 50% for quick calc)
+ * Good cap rate varies by market but typically 4-10%
+ */
+export function calculateCapRate(
+  purchasePrice: number,
+  monthlyRent: number,
+  operatingExpenseRatio: number = 0.5 // Default to 50% rule
+): number {
+  if (purchasePrice <= 0) return 0;
+  const annualRent = monthlyRent * 12;
+  const operatingExpenses = annualRent * operatingExpenseRatio;
+  const noi = annualRent - operatingExpenses;
+  return (noi / purchasePrice) * 100;
+}
+
+/**
+ * Calculate Principal and Interest components of mortgage payment
+ */
+export function calculatePrincipalAndInterest(
+  loanAmount: number,
+  annualInterestRate: number,
+  loanTermYears: number
+): { principal: number; interest: number; totalPayment: number } {
+  const monthlyPayment = calculateMonthlyMortgagePayment(
+    loanAmount,
+    annualInterestRate,
+    loanTermYears
+  );
+
+  // First month's interest calculation
+  const monthlyRate = annualInterestRate / 100 / 12;
+  const firstMonthInterest = loanAmount * monthlyRate;
+  const firstMonthPrincipal = monthlyPayment - firstMonthInterest;
+
+  return {
+    principal: firstMonthPrincipal,
+    interest: firstMonthInterest,
+    totalPayment: monthlyPayment,
+  };
+}

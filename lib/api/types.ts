@@ -368,6 +368,20 @@ export interface MarketListingResponse {
   createdAt: string; // format: date-time
   updatedAt: string; // format: date-time
   lastScrapedAt?: string; // format: date-time
+
+  // Calculated fields (client-side only)
+  calculatedExpectedRent?: number;
+  calculatedMonthlyPayment?: number;
+  calculatedCashOnCash?: number;
+  calculatedMeets1Percent?: boolean;
+  calculatedMeets2Percent?: boolean;
+  calculatedMeets50Percent?: boolean;
+  calculatedPriceToRent?: number;
+  calculatedCapRate?: number;
+  calculatedMonthlyCashflow?: number;
+  calculatedTotalMonthlyExpenses?: number;
+  calculatedMonthlyPropertyTax?: number;
+  calculatedMonthlyInsurance?: number;
 }
 
 export interface MarketListingWithPreferenceResponse {
@@ -408,6 +422,20 @@ export interface MarketListingWithPreferenceResponse {
   lastScrapedAt?: string; // format: date-time
   isInterested: boolean; // User marked as interested in this listing
   notes?: string; // User notes about this listing
+
+  // Calculated fields (client-side only)
+  calculatedExpectedRent?: number;
+  calculatedMonthlyPayment?: number;
+  calculatedCashOnCash?: number;
+  calculatedMeets1Percent?: boolean;
+  calculatedMeets2Percent?: boolean;
+  calculatedMeets50Percent?: boolean;
+  calculatedPriceToRent?: number;
+  calculatedCapRate?: number;
+  calculatedMonthlyCashflow?: number;
+  calculatedTotalMonthlyExpenses?: number;
+  calculatedMonthlyPropertyTax?: number;
+  calculatedMonthlyInsurance?: number;
 }
 
 // Expected Rent types

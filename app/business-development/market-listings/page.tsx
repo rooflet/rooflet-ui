@@ -38,11 +38,16 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { marketListingsApi } from "@/lib/api/market-listings";
-import type { MarketListingResponse } from "@/lib/api/types";
+import type { MarketListingWithPreferenceResponse } from "@/lib/api/types";
 import {
   calculateInvestmentMetrics,
   estimateMonthlyPropertyTax,
   estimateMonthlyInsurance,
+  meets2PercentRule,
+  meets50PercentRule,
+  calculatePriceToRentRatio,
+  calculateCapRate,
+  calculatePrincipalAndInterest,
   type FinancingStrategy,
 } from "@/lib/investment-calculations";
 import {
@@ -64,13 +69,15 @@ import { useEffect, useState } from "react";
 
 export default function MarketListingsPage() {
   const { toast } = useToast();
-  const [listings, setListings] = useState<MarketListingResponse[]>([]);
+  const [listings, setListings] = useState<
+    MarketListingWithPreferenceResponse[]
+  >([]);
   const [filteredListings, setFilteredListings] = useState<
-    MarketListingResponse[]
+    MarketListingWithPreferenceResponse[]
   >([]);
   const [loading, setLoading] = useState(true);
   const [selectedListing, setSelectedListing] =
-    useState<MarketListingResponse | null>(null);
+    useState<MarketListingWithPreferenceResponse | null>(null);
   const [showDetails, setShowDetails] = useState(false);
 
   // Filter states
@@ -138,9 +145,16 @@ export default function MarketListingsPage() {
     try {
       setLoading(true);
       const data = await marketListingsApi.getAll();
-      setListings(data);
+      // Add preference fields with defaults
+      const listingsWithPreferences: MarketListingWithPreferenceResponse[] =
+        data.map((listing) => ({
+          ...listing,
+          isInterested: false,
+          notes: undefined,
+        }));
+      setListings(listingsWithPreferences);
       // Load expected rents for all listings
-      await loadExpectedRents(data);
+      await loadExpectedRents(listingsWithPreferences);
     } catch (error) {
       console.error("Failed to load market listings:", error);
       toast({
@@ -153,7 +167,9 @@ export default function MarketListingsPage() {
     }
   };
 
-  const loadExpectedRents = async (listingsData: MarketListingResponse[]) => {
+  const loadExpectedRents = async (
+    listingsData: MarketListingWithPreferenceResponse[]
+  ) => {
     setLoadingExpectedRents(true);
     const updatedListings = await Promise.all(
       listingsData.map(async (listing) => {
@@ -181,12 +197,38 @@ export default function MarketListingsPage() {
             estimateMonthlyInsurance(listing.price)
           );
 
+          // Calculate additional rules of thumb
+          const meets2Percent = meets2PercentRule(
+            expectedRentData.expectedRent,
+            listing.price
+          );
+          const meets50Percent = meets50PercentRule(
+            expectedRentData.expectedRent,
+            metrics.monthlyMortgagePayment
+          );
+          const priceToRent = calculatePriceToRentRatio(
+            listing.price,
+            expectedRentData.expectedRent
+          );
+          const capRate = calculateCapRate(
+            listing.price,
+            expectedRentData.expectedRent
+          );
+
           return {
             ...listing,
             calculatedExpectedRent: expectedRentData.expectedRent,
             calculatedMonthlyPayment: metrics.monthlyMortgagePayment,
             calculatedCashOnCash: metrics.cashOnCashReturn,
             calculatedMeets1Percent: metrics.meets1PercentRule,
+            calculatedMeets2Percent: meets2Percent,
+            calculatedMeets50Percent: meets50Percent,
+            calculatedPriceToRent: priceToRent,
+            calculatedCapRate: capRate,
+            calculatedMonthlyCashflow: metrics.monthlyNetIncome,
+            calculatedTotalMonthlyExpenses: metrics.totalMonthlyExpenses,
+            calculatedMonthlyPropertyTax: metrics.monthlyPropertyTax,
+            calculatedMonthlyInsurance: metrics.monthlyInsurance,
           };
         } catch (error) {
           console.error(
@@ -403,6 +445,83 @@ export default function MarketListingsPage() {
     }).format(value);
   };
 
+  // Helper function to get color-coded badge variant and className
+  const getCashflowColor = (cashflow?: number) => {
+    if (cashflow === undefined)
+      return { variant: "secondary" as const, className: "" };
+    if (cashflow >= 200)
+      return {
+        variant: "default" as const,
+        className: "bg-green-600 hover:bg-green-700",
+      };
+    if (cashflow >= 0)
+      return {
+        variant: "default" as const,
+        className: "bg-yellow-600 hover:bg-yellow-700",
+      };
+    return {
+      variant: "default" as const,
+      className: "bg-red-600 hover:bg-red-700",
+    };
+  };
+
+  const getCapRateColor = (capRate?: number) => {
+    if (capRate === undefined)
+      return { variant: "secondary" as const, className: "" };
+    if (capRate >= 8)
+      return {
+        variant: "default" as const,
+        className: "bg-green-600 hover:bg-green-700",
+      };
+    if (capRate >= 5)
+      return {
+        variant: "default" as const,
+        className: "bg-yellow-600 hover:bg-yellow-700",
+      };
+    return {
+      variant: "default" as const,
+      className: "bg-red-600 hover:bg-red-700",
+    };
+  };
+
+  const getCocColor = (coc?: number) => {
+    if (coc === undefined)
+      return { variant: "secondary" as const, className: "" };
+    if (coc >= 8)
+      return {
+        variant: "default" as const,
+        className: "bg-green-600 hover:bg-green-700",
+      };
+    if (coc >= 5)
+      return {
+        variant: "default" as const,
+        className: "bg-yellow-600 hover:bg-yellow-700",
+      };
+    return {
+      variant: "default" as const,
+      className: "bg-red-600 hover:bg-red-700",
+    };
+  };
+
+  const getPriceToRentColor = (ratio?: number) => {
+    if (ratio === undefined)
+      return { variant: "secondary" as const, className: "" };
+    if (ratio <= 15)
+      return {
+        variant: "default" as const,
+        className: "bg-green-600 hover:bg-green-700",
+      };
+    if (ratio <= 20)
+      return {
+        variant: "default" as const,
+        className: "bg-yellow-600 hover:bg-yellow-700",
+      };
+    return {
+      variant: "default" as const,
+      className: "bg-red-600 hover:bg-red-700",
+    };
+  };
+
   const formatDate = (dateString?: string) => {
     if (!dateString) return "N/A";
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -412,7 +531,7 @@ export default function MarketListingsPage() {
     });
   };
 
-  const getUniqueValues = (key: keyof MarketListingResponse) => {
+  const getUniqueValues = (key: keyof MarketListingWithPreferenceResponse) => {
     const values = new Set(
       listings.map((l) => l[key]).filter((v) => v !== null && v !== undefined)
     );
@@ -777,77 +896,50 @@ export default function MarketListingsPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-12"></TableHead>
-                      <TableHead
-                        className="cursor-pointer select-none hover:bg-muted/50"
-                        onClick={() => handleSort("address")}
-                      >
-                        <div className="flex items-center">
-                          Address
-                          {getSortIcon("address")}
+                      <TableHead className="w-8 p-2"></TableHead>
+                      <TableHead className="p-2 min-w-[140px]">
+                        Address / Location
+                      </TableHead>
+                      <TableHead className="text-right p-2 cursor-pointer hover:bg-muted/50" onClick={() => handleSort("price")}>
+                        <div className="flex items-center justify-end text-xs">
+                          Price {getSortIcon("price")}
                         </div>
                       </TableHead>
-                      <TableHead
-                        className="cursor-pointer select-none hover:bg-muted/50"
-                        onClick={() => handleSort("city")}
-                      >
-                        <div className="flex items-center">
-                          Location
-                          {getSortIcon("city")}
-                        </div>
+                      <TableHead className="text-center p-2 w-12">
+                        <div className="text-xs">Bd/Ba</div>
                       </TableHead>
-                      <TableHead
-                        className="text-right cursor-pointer select-none hover:bg-muted/50"
-                        onClick={() => handleSort("price")}
-                      >
-                        <div className="flex items-center justify-end">
-                          Price
-                          {getSortIcon("price")}
-                        </div>
+                      <TableHead className="text-right p-2 w-16">
+                        <div className="text-xs">Sqft</div>
                       </TableHead>
-                      <TableHead
-                        className="text-center cursor-pointer select-none hover:bg-muted/50"
-                        onClick={() => handleSort("bedrooms")}
-                      >
-                        <div className="flex items-center justify-center">
-                          Beds
-                          {getSortIcon("bedrooms")}
-                        </div>
+                      <TableHead className="text-center p-2 w-12">
+                        <div className="text-xs">DOM</div>
                       </TableHead>
-                      <TableHead
-                        className="text-center cursor-pointer select-none hover:bg-muted/50"
-                        onClick={() => handleSort("bathrooms")}
-                      >
-                        <div className="flex items-center justify-center">
-                          Baths
-                          {getSortIcon("bathrooms")}
-                        </div>
+                      {/* Analysis Sections */}
+                      <TableHead className="text-right p-2 w-20 bg-blue-50 dark:bg-blue-950/20">
+                        <div className="text-xs">Rent</div>
                       </TableHead>
-                      <TableHead
-                        className="text-right cursor-pointer select-none hover:bg-muted/50"
-                        onClick={() => handleSort("squareFeet")}
-                      >
-                        <div className="flex items-center justify-end">
-                          Sqft
-                          {getSortIcon("squareFeet")}
-                        </div>
+                      <TableHead className="text-center p-2 w-12 bg-purple-50 dark:bg-purple-950/20">
+                        <div className="text-xs">1%</div>
                       </TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead
-                        className="text-center cursor-pointer select-none hover:bg-muted/50"
-                        onClick={() => handleSort("daysOnMarket")}
-                      >
-                        <div className="flex items-center justify-center">
-                          DOM
-                          {getSortIcon("daysOnMarket")}
-                        </div>
+                      <TableHead className="text-center p-2 w-12 bg-purple-50 dark:bg-purple-950/20">
+                        <div className="text-xs">2%</div>
                       </TableHead>
-                      <TableHead className="text-right">Est. Rent</TableHead>
-                      <TableHead className="text-center">1% Rule</TableHead>
-                      <TableHead className="text-right">CoC Return</TableHead>
-                      <TableHead>Source</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead className="text-center p-2 w-12 bg-purple-50 dark:bg-purple-950/20">
+                        <div className="text-xs">50%</div>
+                      </TableHead>
+                      <TableHead className="text-right p-2 w-20 bg-green-50 dark:bg-green-950/20">
+                        <div className="text-xs">CF/mo</div>
+                      </TableHead>
+                      <TableHead className="text-right p-2 w-16 bg-green-50 dark:bg-green-950/20">
+                        <div className="text-xs">Cap%</div>
+                      </TableHead>
+                      <TableHead className="text-right p-2 w-16 bg-green-50 dark:bg-green-950/20">
+                        <div className="text-xs">CoC%</div>
+                      </TableHead>
+                      <TableHead className="text-right p-2 w-16 bg-green-50 dark:bg-green-950/20">
+                        <div className="text-xs">P/R</div>
+                      </TableHead>
+                      <TableHead className="text-right p-2 w-12"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -860,138 +952,163 @@ export default function MarketListingsPage() {
                           setShowDetails(true);
                         }}
                       >
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleInterested(listing.id);
-                              }}
-                            >
-                              <Star
-                                className={`h-3 w-3 ${
-                                  listing.isInterested
-                                    ? "fill-yellow-500 text-yellow-500"
-                                    : ""
-                                }`}
-                              />
-                            </Button>
+                        <TableCell className="p-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-5 w-5 p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleInterested(listing.id);
+                            }}
+                          >
+                            <Star
+                              className={`h-3 w-3 ${
+                                listing.isInterested
+                                  ? "fill-yellow-500 text-yellow-500"
+                                  : ""
+                              }`}
+                            />
+                          </Button>
+                        </TableCell>
+                        <TableCell className="p-2">
+                          <div className="text-xs font-medium leading-tight">
+                            {listing.address1 || listing.address}
+                          </div>
+                          <div className="text-xs text-muted-foreground leading-tight">
+                            {listing.city}, {listing.state} {listing.zipCode}
                           </div>
                         </TableCell>
-                        <TableCell className="font-medium">
-                          {listing.address1 || listing.address}
-                          {listing.address2 && (
-                            <span className="text-muted-foreground">
-                              {" "}
-                              {listing.address2}
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            {listing.city}, {listing.state}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {listing.zipCode}
+                        <TableCell className="text-right p-2">
+                          <div className="text-xs font-semibold">
+                            {formatCurrency(listing.price)}
                           </div>
                         </TableCell>
-                        <TableCell className="text-right font-semibold">
-                          {formatCurrency(listing.price)}
-                          {listing.pricePerSqft && (
-                            <div className="text-xs text-muted-foreground font-normal">
-                              ${listing.pricePerSqft}/sqft
-                            </div>
-                          )}
+                        <TableCell className="text-center p-2">
+                          <div className="text-xs">
+                            {listing.bedrooms || "-"}/{listing.bathrooms || "-"}
+                          </div>
                         </TableCell>
-                        <TableCell className="text-center">
-                          {listing.bedrooms || "-"}
+                        <TableCell className="text-right p-2">
+                          <div className="text-xs">
+                            {listing.squareFeet ? (listing.squareFeet / 1000).toFixed(1) + "k" : "-"}
+                          </div>
                         </TableCell>
-                        <TableCell className="text-center">
-                          {listing.bathrooms || "-"}
+                        <TableCell className="text-center p-2">
+                          <div className="text-xs">
+                            {listing.daysOnMarket !== undefined ? listing.daysOnMarket : "-"}
+                          </div>
                         </TableCell>
-                        <TableCell className="text-right">
-                          {listing.squareFeet
-                            ? listing.squareFeet.toLocaleString()
-                            : "-"}
-                        </TableCell>
-                        <TableCell className="text-sm max-w-[150px] truncate">
-                          {listing.propertyType || "-"}
-                        </TableCell>
-                        <TableCell>
-                          {listing.listingStatus && (
-                            <Badge
-                              variant={
-                                listing.listingStatus === "Active"
-                                  ? "default"
-                                  : "secondary"
-                              }
-                              className="text-xs"
-                            >
-                              {listing.listingStatus}
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {listing.daysOnMarket !== undefined
-                            ? listing.daysOnMarket
-                            : "-"}
-                        </TableCell>
-                        <TableCell className="text-right">
+
+                        {/* Rental Income Analysis */}
+                        <TableCell className="text-right p-2 bg-blue-50 dark:bg-blue-950/20">
                           {listing.calculatedExpectedRent ? (
-                            <div className="font-medium">
-                              {formatCurrency(listing.calculatedExpectedRent)}
-                              <div className="text-xs text-muted-foreground font-normal">
-                                /month
-                              </div>
+                            <div className="text-xs font-medium">
+                              {(listing.calculatedExpectedRent / 1000).toFixed(1)}k
                             </div>
                           ) : (
-                            <span className="text-muted-foreground">-</span>
+                            <span className="text-muted-foreground text-xs">-</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-center">
+
+                        {/* Investment Rules Analysis */}
+                        <TableCell className="text-center p-2 bg-purple-50 dark:bg-purple-950/20">
                           {listing.calculatedMeets1Percent !== undefined ? (
                             <Badge
-                              variant={
+                              className={
                                 listing.calculatedMeets1Percent
-                                  ? "default"
-                                  : "secondary"
+                                  ? "bg-green-600 hover:bg-green-700 text-xs h-5 px-2"
+                                  : "bg-red-600 hover:bg-red-700 text-xs h-5 px-2"
                               }
                             >
                               {listing.calculatedMeets1Percent ? "✓" : "✗"}
                             </Badge>
                           ) : (
-                            <span className="text-muted-foreground">-</span>
+                            <span className="text-muted-foreground text-xs">-</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-right">
-                          {listing.calculatedCashOnCash !== undefined ? (
-                            <div
-                              className={`font-medium ${
-                                listing.calculatedCashOnCash >= 8
-                                  ? "text-green-600"
-                                  : listing.calculatedCashOnCash >= 5
-                                  ? "text-yellow-600"
-                                  : "text-red-600"
-                              }`}
+                        <TableCell className="text-center p-2 bg-purple-50 dark:bg-purple-950/20">
+                          {listing.calculatedMeets2Percent !== undefined ? (
+                            <Badge
+                              className={
+                                listing.calculatedMeets2Percent
+                                  ? "bg-green-600 hover:bg-green-700 text-xs h-5 px-2"
+                                  : "bg-red-600 hover:bg-red-700 text-xs h-5 px-2"
+                              }
                             >
-                              {listing.calculatedCashOnCash.toFixed(1)}%
-                            </div>
+                              {listing.calculatedMeets2Percent ? "✓" : "✗"}
+                            </Badge>
                           ) : (
-                            <span className="text-muted-foreground">-</span>
+                            <span className="text-muted-foreground text-xs">-</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-sm">
-                          {listing.source}
+                        <TableCell className="text-center p-2 bg-purple-50 dark:bg-purple-950/20">
+                          {listing.calculatedMeets50Percent !== undefined ? (
+                            <Badge
+                              className={
+                                listing.calculatedMeets50Percent
+                                  ? "bg-green-600 hover:bg-green-700 text-xs h-5 px-2"
+                                  : "bg-red-600 hover:bg-red-700 text-xs h-5 px-2"
+                              }
+                            >
+                              {listing.calculatedMeets50Percent ? "✓" : "✗"}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">-</span>
+                          )}
                         </TableCell>
-                        <TableCell className="text-right">
+
+                        {/* Returns Analysis */}
+                        <TableCell className="text-right p-2 bg-green-50 dark:bg-green-950/20">
+                          {listing.calculatedMonthlyCashflow !== undefined ? (
+                            <Badge
+                              className={`${getCashflowColor(listing.calculatedMonthlyCashflow).className} text-xs h-5 px-1.5`}
+                            >
+                              {listing.calculatedMonthlyCashflow >= 0 ? "+" : ""}{(listing.calculatedMonthlyCashflow / 1000).toFixed(1)}k
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right p-2 bg-green-50 dark:bg-green-950/20">
+                          {listing.calculatedCapRate !== undefined ? (
+                            <Badge
+                              className={`${getCapRateColor(listing.calculatedCapRate).className} text-xs h-5 px-1.5`}
+                            >
+                              {listing.calculatedCapRate.toFixed(1)}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right p-2 bg-green-50 dark:bg-green-950/20">
+                          {listing.calculatedCashOnCash !== undefined ? (
+                            <Badge
+                              className={`${getCocColor(listing.calculatedCashOnCash).className} text-xs h-5 px-1.5`}
+                            >
+                              {listing.calculatedCashOnCash.toFixed(1)}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right p-2 bg-green-50 dark:bg-green-950/20">
+                          {listing.calculatedPriceToRent !== undefined ? (
+                            <Badge
+                              className={`${getPriceToRentColor(listing.calculatedPriceToRent).className} text-xs h-5 px-1.5`}
+                            >
+                              {listing.calculatedPriceToRent.toFixed(0)}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right p-2">
                           {listing.sourceUrl && (
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-8 px-2"
+                              className="h-6 w-6 p-0"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 window.open(listing.sourceUrl, "_blank");
@@ -1017,7 +1134,7 @@ export default function MarketListingsPage() {
           {selectedListing && (
             <>
               <DialogHeader>
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between pr-8">
                   <div className="flex-1">
                     <DialogTitle className="text-2xl">
                       {selectedListing.address1 || selectedListing.address}
@@ -1207,54 +1324,268 @@ export default function MarketListingsPage() {
                       <TrendingUp className="h-5 w-5" />
                       Investment Analysis
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
+
+                    {/* Monthly Cashflow Summary */}
+                    <div className="p-4 bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-950/20 dark:to-blue-950/20 rounded-lg mb-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-sm text-muted-foreground mb-1">
+                            Estimated Monthly Cashflow
+                          </div>
+                          <div
+                            className={`text-3xl font-bold ${
+                              (selectedListing.calculatedMonthlyCashflow ||
+                                0) >= 200
+                                ? "text-green-600"
+                                : (selectedListing.calculatedMonthlyCashflow ||
+                                    0) >= 0
+                                ? "text-yellow-600"
+                                : "text-red-600"
+                            }`}
+                          >
+                            {selectedListing.calculatedMonthlyCashflow !==
+                            undefined
+                              ? formatCurrency(
+                                  selectedListing.calculatedMonthlyCashflow
+                                )
+                              : "N/A"}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {(selectedListing.calculatedMonthlyCashflow || 0) >=
+                            200
+                              ? "Strong positive cashflow"
+                              : (selectedListing.calculatedMonthlyCashflow ||
+                                  0) >= 0
+                              ? "Break-even or slight positive"
+                              : "Negative cashflow"}
+                          </div>
+                        </div>
+                        <Badge
+                          className={
+                            (selectedListing.calculatedMonthlyCashflow || 0) >=
+                            200
+                              ? "bg-green-600 hover:bg-green-700 text-lg px-4 py-2"
+                              : (selectedListing.calculatedMonthlyCashflow ||
+                                  0) >= 0
+                              ? "bg-yellow-600 hover:bg-yellow-700 text-lg px-4 py-2"
+                              : "bg-red-600 hover:bg-red-700 text-lg px-4 py-2"
+                          }
+                        >
+                          {(selectedListing.calculatedMonthlyCashflow || 0) >=
+                          200
+                            ? "Excellent"
+                            : (selectedListing.calculatedMonthlyCashflow ||
+                                0) >= 0
+                            ? "Okay"
+                            : "Poor"}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    {/* PITI Breakdown */}
+                    <div className="p-4 bg-muted/50 rounded-lg mb-4">
+                      <h4 className="font-semibold mb-3 text-sm">
+                        Monthly Expense Breakdown (PITI + HOA)
+                      </h4>
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">
+                            Principal & Interest (P&I)
+                          </span>
+                          <span className="font-medium">
+                            {selectedListing.calculatedMonthlyPayment
+                              ? formatCurrency(
+                                  selectedListing.calculatedMonthlyPayment
+                                )
+                              : "N/A"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">
+                            Property Tax (T)
+                          </span>
+                          <span className="font-medium">
+                            {selectedListing.calculatedMonthlyPropertyTax
+                              ? formatCurrency(
+                                  selectedListing.calculatedMonthlyPropertyTax
+                                )
+                              : "N/A"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">
+                            Insurance (I)
+                          </span>
+                          <span className="font-medium">
+                            {selectedListing.calculatedMonthlyInsurance
+                              ? formatCurrency(
+                                  selectedListing.calculatedMonthlyInsurance
+                                )
+                              : "N/A"}
+                          </span>
+                        </div>
+                        {selectedListing.hoaFee &&
+                          selectedListing.hoaFee > 0 && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-muted-foreground">
+                                HOA Fee
+                              </span>
+                              <span className="font-medium">
+                                {formatCurrency(selectedListing.hoaFee)}
+                              </span>
+                            </div>
+                          )}
+                        <Separator className="my-2" />
+                        <div className="flex justify-between items-center font-semibold">
+                          <span>Total Monthly Expenses</span>
+                          <span className="text-lg">
+                            {selectedListing.calculatedTotalMonthlyExpenses
+                              ? formatCurrency(
+                                  selectedListing.calculatedTotalMonthlyExpenses
+                                )
+                              : "N/A"}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="mt-3 text-xs text-muted-foreground italic">
+                        * Property tax estimated at 1.1% annually (~
+                        {((selectedListing.price || 0) * 0.011).toFixed(0)}
+                        /year)
+                        <br />* Insurance estimated at $0.35 per $1000 of home
+                        value
+                      </div>
+                    </div>
+
+                    {/* Investment Rules of Thumb */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                      <div className="p-3 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
+                        <div className="text-xs text-muted-foreground mb-1">
+                          1% Rule
+                        </div>
+                        <Badge
+                          className={
+                            selectedListing.calculatedMeets1Percent
+                              ? "bg-green-600 hover:bg-green-700"
+                              : "bg-red-600 hover:bg-red-700"
+                          }
+                        >
+                          {selectedListing.calculatedMeets1Percent
+                            ? "✓ Pass"
+                            : "✗ Fail"}
+                        </Badge>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          Need{" "}
+                          {formatCurrency((selectedListing.price || 0) * 0.01)}
+                          /mo
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
+                        <div className="text-xs text-muted-foreground mb-1">
+                          2% Rule
+                        </div>
+                        <Badge
+                          className={
+                            selectedListing.calculatedMeets2Percent
+                              ? "bg-green-600 hover:bg-green-700"
+                              : "bg-red-600 hover:bg-red-700"
+                          }
+                        >
+                          {selectedListing.calculatedMeets2Percent
+                            ? "✓ Pass"
+                            : "✗ Fail"}
+                        </Badge>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          Need{" "}
+                          {formatCurrency((selectedListing.price || 0) * 0.02)}
+                          /mo
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
+                        <div className="text-xs text-muted-foreground mb-1">
+                          50% Rule
+                        </div>
+                        <Badge
+                          className={
+                            selectedListing.calculatedMeets50Percent
+                              ? "bg-green-600 hover:bg-green-700"
+                              : "bg-red-600 hover:bg-red-700"
+                          }
+                        >
+                          {selectedListing.calculatedMeets50Percent
+                            ? "✓ Pass"
+                            : "✗ Fail"}
+                        </Badge>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          Expenses &lt; 50% rent
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-purple-50 dark:bg-purple-950/20 rounded-lg">
+                        <div className="text-xs text-muted-foreground mb-1">
+                          Price/Rent
+                        </div>
+                        <Badge
+                          className={
+                            getPriceToRentColor(
+                              selectedListing.calculatedPriceToRent
+                            ).className
+                          }
+                        >
+                          {selectedListing.calculatedPriceToRent
+                            ? selectedListing.calculatedPriceToRent.toFixed(1)
+                            : "N/A"}
+                        </Badge>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {(selectedListing.calculatedPriceToRent || 0) <= 15
+                            ? "Good for buying"
+                            : (selectedListing.calculatedPriceToRent || 0) <= 20
+                            ? "Neutral"
+                            : "Better to rent"}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Return Metrics */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-green-50 dark:bg-green-950/20 rounded-lg">
                       <div>
                         <div className="text-sm text-muted-foreground mb-1">
                           Expected Monthly Rent
                         </div>
-                        <div className="text-2xl font-bold text-green-600">
+                        <div className="text-2xl font-bold text-blue-600">
                           {formatCurrency(
                             selectedListing.calculatedExpectedRent
                           )}
                         </div>
                       </div>
+
                       <div>
                         <div className="text-sm text-muted-foreground mb-1">
-                          Monthly Mortgage Payment
+                          Cap Rate
                         </div>
-                        <div className="text-2xl font-bold">
-                          {selectedListing.calculatedMonthlyPayment
-                            ? formatCurrency(
-                                selectedListing.calculatedMonthlyPayment
-                              )
+                        <div
+                          className={`text-2xl font-bold ${
+                            (selectedListing.calculatedCapRate || 0) >= 8
+                              ? "text-green-600"
+                              : (selectedListing.calculatedCapRate || 0) >= 5
+                              ? "text-yellow-600"
+                              : "text-red-600"
+                          }`}
+                        >
+                          {selectedListing.calculatedCapRate !== undefined
+                            ? `${selectedListing.calculatedCapRate.toFixed(1)}%`
                             : "N/A"}
                         </div>
-                      </div>
-                      <div>
-                        <div className="text-sm text-muted-foreground mb-1">
-                          1% Rule
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge
-                            variant={
-                              selectedListing.calculatedMeets1Percent
-                                ? "default"
-                                : "secondary"
-                            }
-                            className="text-lg px-3 py-1"
-                          >
-                            {selectedListing.calculatedMeets1Percent
-                              ? "✓ Passes"
-                              : "✗ Fails"}
-                          </Badge>
-                          {selectedListing.price && (
-                            <span className="text-xs text-muted-foreground">
-                              (Need{" "}
-                              {formatCurrency(selectedListing.price * 0.01)}/mo)
-                            </span>
-                          )}
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {(selectedListing.calculatedCapRate || 0) >= 8
+                            ? "Excellent"
+                            : (selectedListing.calculatedCapRate || 0) >= 5
+                            ? "Good"
+                            : "Below Average"}
                         </div>
                       </div>
+
                       <div>
                         <div className="text-sm text-muted-foreground mb-1">
                           Cash on Cash Return
@@ -1283,12 +1614,17 @@ export default function MarketListingsPage() {
                         </div>
                       </div>
                     </div>
+
                     <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
                       <div className="text-xs text-muted-foreground">
-                        <strong>Financing:</strong>{" "}
-                        {financingStrategy.downPaymentPercent}% down,{" "}
-                        {financingStrategy.interestRate}% interest,{" "}
-                        {financingStrategy.loanTermYears} years
+                        <strong>Financing Assumptions:</strong>{" "}
+                        {financingStrategy.downPaymentPercent}% down (
+                        {formatCurrency(
+                          (selectedListing.price || 0) *
+                            (financingStrategy.downPaymentPercent / 100)
+                        )}
+                        ), {financingStrategy.interestRate}% interest rate,{" "}
+                        {financingStrategy.loanTermYears}-year term
                       </div>
                     </div>
                   </div>
