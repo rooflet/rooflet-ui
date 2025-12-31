@@ -48,6 +48,9 @@ import {
   calculatePriceToRentRatio,
   calculateCapRate,
   calculatePrincipalAndInterest,
+  calculateDSCR,
+  calculateBreakEvenRatio,
+  calculateOperatingExpenseRatio,
   type FinancingStrategy,
 } from "@/lib/investment-calculations";
 import {
@@ -214,6 +217,17 @@ export default function MarketListingsPage() {
             listing.price,
             expectedRentData.expectedRent
           );
+          const dscr = calculateDSCR(
+            expectedRentData.expectedRent,
+            metrics.monthlyMortgagePayment
+          );
+          const breakEvenRatio = calculateBreakEvenRatio(
+            expectedRentData.expectedRent,
+            metrics.monthlyMortgagePayment
+          );
+          const oer = calculateOperatingExpenseRatio(
+            expectedRentData.expectedRent
+          );
 
           return {
             ...listing,
@@ -229,6 +243,9 @@ export default function MarketListingsPage() {
             calculatedTotalMonthlyExpenses: metrics.totalMonthlyExpenses,
             calculatedMonthlyPropertyTax: metrics.monthlyPropertyTax,
             calculatedMonthlyInsurance: metrics.monthlyInsurance,
+            calculatedDSCR: dscr,
+            calculatedBreakEvenRatio: breakEvenRatio,
+            calculatedOER: oer,
           };
         } catch (error) {
           console.error(
@@ -531,6 +548,63 @@ export default function MarketListingsPage() {
     if (sourceLower.includes("trulia"))
       return "bg-orange-500 hover:bg-orange-600";
     return "bg-gray-500 hover:bg-gray-600";
+  };
+
+  const getDSCRColor = (dscr?: number) => {
+    if (dscr === undefined)
+      return { variant: "secondary" as const, className: "" };
+    if (dscr >= 1.25)
+      return {
+        variant: "default" as const,
+        className: "bg-green-600 hover:bg-green-700",
+      };
+    if (dscr >= 1.0)
+      return {
+        variant: "default" as const,
+        className: "bg-yellow-600 hover:bg-yellow-700",
+      };
+    return {
+      variant: "default" as const,
+      className: "bg-red-600 hover:bg-red-700",
+    };
+  };
+
+  const getBreakEvenColor = (ratio?: number) => {
+    if (ratio === undefined)
+      return { variant: "secondary" as const, className: "" };
+    if (ratio < 85)
+      return {
+        variant: "default" as const,
+        className: "bg-green-600 hover:bg-green-700",
+      };
+    if (ratio < 100)
+      return {
+        variant: "default" as const,
+        className: "bg-yellow-600 hover:bg-yellow-700",
+      };
+    return {
+      variant: "default" as const,
+      className: "bg-red-600 hover:bg-red-700",
+    };
+  };
+
+  const getOERColor = (oer?: number) => {
+    if (oer === undefined)
+      return { variant: "secondary" as const, className: "" };
+    if (oer <= 40)
+      return {
+        variant: "default" as const,
+        className: "bg-green-600 hover:bg-green-700",
+      };
+    if (oer <= 50)
+      return {
+        variant: "default" as const,
+        className: "bg-yellow-600 hover:bg-yellow-700",
+      };
+    return {
+      variant: "default" as const,
+      className: "bg-red-600 hover:bg-red-700",
+    };
   };
 
   const formatDate = (dateString?: string) => {
@@ -919,6 +993,15 @@ export default function MarketListingsPage() {
                       <TableHead className="text-right p-2 w-16 bg-green-50 dark:bg-green-950/20">
                         <div className="text-xs">P/R</div>
                       </TableHead>
+                      <TableHead className="text-right p-2 w-16 bg-green-50 dark:bg-green-950/20">
+                        <div className="text-xs">DSCR</div>
+                      </TableHead>
+                      <TableHead className="text-right p-2 w-16 bg-green-50 dark:bg-green-950/20">
+                        <div className="text-xs">BER%</div>
+                      </TableHead>
+                      <TableHead className="text-right p-2 w-16 bg-green-50 dark:bg-green-950/20">
+                        <div className="text-xs">OER%</div>
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1141,6 +1224,53 @@ export default function MarketListingsPage() {
                               } text-xs h-5 px-1.5`}
                             >
                               {listing.calculatedPriceToRent.toFixed(0)}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">
+                              -
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right p-2 bg-green-50 dark:bg-green-950/20">
+                          {listing.calculatedDSCR !== undefined ? (
+                            <Badge
+                              className={`${
+                                getDSCRColor(listing.calculatedDSCR).className
+                              } text-xs h-5 px-1.5`}
+                            >
+                              {listing.calculatedDSCR.toFixed(2)}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">
+                              -
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right p-2 bg-green-50 dark:bg-green-950/20">
+                          {listing.calculatedBreakEvenRatio !== undefined ? (
+                            <Badge
+                              className={`${
+                                getBreakEvenColor(
+                                  listing.calculatedBreakEvenRatio
+                                ).className
+                              } text-xs h-5 px-1.5`}
+                            >
+                              {listing.calculatedBreakEvenRatio.toFixed(0)}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">
+                              -
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right p-2 bg-green-50 dark:bg-green-950/20">
+                          {listing.calculatedOER !== undefined ? (
+                            <Badge
+                              className={`${
+                                getOERColor(listing.calculatedOER).className
+                              } text-xs h-5 px-1.5`}
+                            >
+                              {listing.calculatedOER.toFixed(0)}
                             </Badge>
                           ) : (
                             <span className="text-muted-foreground text-xs">
@@ -1645,6 +1775,92 @@ export default function MarketListingsPage() {
                             : (selectedListing.calculatedCashOnCash || 0) >= 5
                             ? "Good"
                             : "Below Average"}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Advanced Metrics */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-amber-50 dark:bg-amber-950/20 rounded-lg mt-4">
+                      <div>
+                        <div className="text-sm text-muted-foreground mb-1">
+                          DSCR (Debt Service Coverage Ratio)
+                        </div>
+                        <div
+                          className={`text-2xl font-bold ${
+                            (selectedListing.calculatedDSCR || 0) >= 1.25
+                              ? "text-green-600"
+                              : (selectedListing.calculatedDSCR || 0) >= 1.0
+                              ? "text-yellow-600"
+                              : "text-red-600"
+                          }`}
+                        >
+                          {selectedListing.calculatedDSCR !== undefined
+                            ? selectedListing.calculatedDSCR.toFixed(2)
+                            : "N/A"}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {(selectedListing.calculatedDSCR || 0) >= 1.25
+                            ? "Strong coverage"
+                            : (selectedListing.calculatedDSCR || 0) >= 1.0
+                            ? "Adequate coverage"
+                            : "Insufficient income"}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="text-sm text-muted-foreground mb-1">
+                          Break-Even Ratio
+                        </div>
+                        <div
+                          className={`text-2xl font-bold ${
+                            (selectedListing.calculatedBreakEvenRatio || 0) < 85
+                              ? "text-green-600"
+                              : (selectedListing.calculatedBreakEvenRatio ||
+                                  0) < 100
+                              ? "text-yellow-600"
+                              : "text-red-600"
+                          }`}
+                        >
+                          {selectedListing.calculatedBreakEvenRatio !==
+                          undefined
+                            ? `${selectedListing.calculatedBreakEvenRatio.toFixed(
+                                0
+                              )}%`
+                            : "N/A"}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {(selectedListing.calculatedBreakEvenRatio || 0) < 85
+                            ? "Good cushion"
+                            : (selectedListing.calculatedBreakEvenRatio || 0) <
+                              100
+                            ? "Tight but manageable"
+                            : "Negative cash flow"}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="text-sm text-muted-foreground mb-1">
+                          Operating Expense Ratio
+                        </div>
+                        <div
+                          className={`text-2xl font-bold ${
+                            (selectedListing.calculatedOER || 0) <= 40
+                              ? "text-green-600"
+                              : (selectedListing.calculatedOER || 0) <= 50
+                              ? "text-yellow-600"
+                              : "text-red-600"
+                          }`}
+                        >
+                          {selectedListing.calculatedOER !== undefined
+                            ? `${selectedListing.calculatedOER.toFixed(0)}%`
+                            : "N/A"}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {(selectedListing.calculatedOER || 0) <= 40
+                            ? "Excellent efficiency"
+                            : (selectedListing.calculatedOER || 0) <= 50
+                            ? "Industry standard"
+                            : "High expenses"}
                         </div>
                       </div>
                     </div>

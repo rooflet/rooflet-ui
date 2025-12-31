@@ -347,3 +347,61 @@ export function calculatePrincipalAndInterest(
     totalPayment: monthlyPayment,
   };
 }
+
+/**
+ * Calculate Debt Service Coverage Ratio (DSCR)
+ * DSCR = Net Operating Income / Annual Debt Service
+ * Lenders typically want DSCR >= 1.25 (meaning NOI is 125% of debt payments)
+ * > 1.25: Excellent - Strong cash flow coverage
+ * 1.0-1.25: Good - Adequate coverage
+ * < 1.0: Poor - Not enough income to cover debt
+ */
+export function calculateDSCR(
+  monthlyRent: number,
+  monthlyMortgagePayment: number,
+  operatingExpenseRatio: number = 0.5 // Default to 50% rule
+): number {
+  const annualRent = monthlyRent * 12;
+  const operatingExpenses = annualRent * operatingExpenseRatio;
+  const noi = annualRent - operatingExpenses;
+  const annualDebtService = monthlyMortgagePayment * 12;
+
+  if (annualDebtService <= 0) return 0;
+  return noi / annualDebtService;
+}
+
+/**
+ * Calculate Break-Even Ratio
+ * Break-Even Ratio = (Operating Expenses + Debt Service) / Gross Operating Income
+ * Shows what percentage of income goes to expenses and debt
+ * < 85%: Good - Provides cushion for vacancies
+ * 85-100%: Acceptable - Tight but manageable
+ * > 100%: Poor - Negative cash flow
+ */
+export function calculateBreakEvenRatio(
+  monthlyRent: number,
+  monthlyMortgagePayment: number,
+  operatingExpenseRatio: number = 0.5
+): number {
+  const annualRent = monthlyRent * 12;
+  const operatingExpenses = annualRent * operatingExpenseRatio;
+  const annualDebtService = monthlyMortgagePayment * 12;
+
+  if (annualRent <= 0) return 0;
+  return ((operatingExpenses + annualDebtService) / annualRent) * 100;
+}
+
+/**
+ * Calculate Operating Expense Ratio (OER)
+ * OER = Operating Expenses / Gross Operating Income
+ * Shows what percentage of income goes to operating expenses (excluding debt)
+ * < 40%: Excellent efficiency
+ * 40-50%: Good - Industry standard
+ * > 50%: High - May indicate inefficiencies or high-expense property
+ */
+export function calculateOperatingExpenseRatio(
+  monthlyRent: number,
+  operatingExpenseRatio: number = 0.5
+): number {
+  return operatingExpenseRatio * 100;
+}

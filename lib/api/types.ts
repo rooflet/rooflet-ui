@@ -382,6 +382,9 @@ export interface MarketListingResponse {
   calculatedTotalMonthlyExpenses?: number;
   calculatedMonthlyPropertyTax?: number;
   calculatedMonthlyInsurance?: number;
+  calculatedDSCR?: number;
+  calculatedBreakEvenRatio?: number;
+  calculatedOER?: number;
 }
 
 export interface MarketListingWithPreferenceResponse {
@@ -436,6 +439,9 @@ export interface MarketListingWithPreferenceResponse {
   calculatedTotalMonthlyExpenses?: number;
   calculatedMonthlyPropertyTax?: number;
   calculatedMonthlyInsurance?: number;
+  calculatedDSCR?: number;
+  calculatedBreakEvenRatio?: number;
+  calculatedOER?: number;
 }
 
 // Expected Rent types
