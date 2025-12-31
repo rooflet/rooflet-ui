@@ -139,21 +139,106 @@ export function calculateInvestmentMetrics(
 }
 
 /**
- * Estimate monthly property tax based on property value
- * Using average US property tax rate of ~1.1% annually
+ * Property tax rates by state (annual percentage)
+ * Based on 2024-2025 average effective property tax rates
  */
-export function estimateMonthlyPropertyTax(propertyValue: number): number {
-  const annualTaxRate = 0.011; // 1.1% average
+const STATE_PROPERTY_TAX_RATES: Record<string, number> = {
+  // Highest tax states
+  NJ: 0.0223,
+  CT: 0.0197,
+  NH: 0.0196,
+  NY: 0.0165,
+  IL: 0.0202,
+  VT: 0.0182,
+  TX: 0.0172,
+  WI: 0.0165,
+  RI: 0.0152,
+  NE: 0.0154,
+
+  // High tax states
+  MI: 0.0143,
+  OH: 0.0141,
+  PA: 0.0138,
+  ME: 0.013,
+  IA: 0.0138,
+  KS: 0.0133,
+  MA: 0.0112,
+  MN: 0.0108,
+  AK: 0.0107,
+  SD: 0.0121,
+
+  // Moderate tax states
+  OR: 0.0091,
+  MD: 0.0107,
+  FL: 0.0089,
+  GA: 0.0088,
+  NC: 0.0078,
+  VA: 0.008,
+  MO: 0.0096,
+  IN: 0.0085,
+  WA: 0.0092,
+  MT: 0.0082,
+
+  // Lower tax states
+  CA: 0.0073,
+  AZ: 0.0062,
+  NV: 0.0056,
+  CO: 0.0051,
+  UT: 0.0057,
+  NM: 0.0079,
+  ID: 0.0063,
+  TN: 0.0068,
+  SC: 0.0055,
+  OK: 0.0087,
+
+  // Lowest tax states
+  AL: 0.0041,
+  WV: 0.0058,
+  WY: 0.0056,
+  LA: 0.0055,
+  HI: 0.0028,
+  DE: 0.0057,
+  AR: 0.0061,
+  MS: 0.0079,
+  KY: 0.0086,
+  DC: 0.0056,
+};
+
+/**
+ * Estimate monthly property tax based on property value and state
+ * Falls back to national average of 1.1% if state is not found
+ */
+export function estimateMonthlyPropertyTax(
+  propertyValue: number,
+  state?: string
+): number {
+  const annualTaxRate =
+    state && STATE_PROPERTY_TAX_RATES[state.toUpperCase()]
+      ? STATE_PROPERTY_TAX_RATES[state.toUpperCase()]
+      : 0.011; // National average fallback
+
   return (propertyValue * annualTaxRate) / 12;
 }
 
 /**
  * Estimate monthly insurance based on property value
- * Using average of ~$1,200/year for a typical home
+ * Based on industry averages:
+ * - Under $200k: ~0.5% annually ($83/mo per $100k)
+ * - $200k-$500k: ~0.35% annually ($58/mo per $100k)
+ * - Over $500k: ~0.25% annually ($42/mo per $100k)
  */
 export function estimateMonthlyInsurance(propertyValue: number): number {
-  // Rough estimate: $0.35 per $1000 of home value per month
-  return (propertyValue / 1000) * 0.35;
+  let annualRate: number;
+
+  if (propertyValue < 200000) {
+    annualRate = 0.005; // 0.5% for lower-value homes
+  } else if (propertyValue < 500000) {
+    annualRate = 0.0035; // 0.35% for mid-range homes
+  } else {
+    annualRate = 0.0025; // 0.25% for higher-value homes
+  }
+
+  return (propertyValue * annualRate) / 12;
 }
 
 /**

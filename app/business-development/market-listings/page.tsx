@@ -193,7 +193,7 @@ export default function MarketListingsPage() {
             expectedRentData.expectedRent,
             financingStrategy,
             listing.hoaFee || 0,
-            estimateMonthlyPropertyTax(listing.price),
+            estimateMonthlyPropertyTax(listing.price, listing.state),
             estimateMonthlyInsurance(listing.price)
           );
 
@@ -522,6 +522,17 @@ export default function MarketListingsPage() {
     };
   };
 
+  const getSourceColor = (source: string) => {
+    const sourceLower = source.toLowerCase();
+    if (sourceLower.includes("redfin")) return "bg-red-500 hover:bg-red-600";
+    if (sourceLower.includes("zillow")) return "bg-blue-500 hover:bg-blue-600";
+    if (sourceLower.includes("realtor"))
+      return "bg-purple-500 hover:bg-purple-600";
+    if (sourceLower.includes("trulia"))
+      return "bg-orange-500 hover:bg-orange-600";
+    return "bg-gray-500 hover:bg-gray-600";
+  };
+
   const formatDate = (dateString?: string) => {
     if (!dateString) return "N/A";
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -800,53 +811,16 @@ export default function MarketListingsPage() {
           </CardContent>
         </Card>
 
-        {/* Stats Summary */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Listings
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {filteredListings.length}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Interested
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {listings.filter((l) => l.isInterested).length}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Avg Price
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {filteredListings.length > 0
-                  ? formatCurrency(
-                      filteredListings.reduce(
-                        (sum, l) => sum + (l.price || 0),
-                        0
-                      ) / filteredListings.length
-                    )
-                  : "$0"}
-              </div>
-            </CardContent>
-          </Card>
+        {/* Search Results */}
+        <div className="text-sm text-muted-foreground">
+          {filteredListings.length}{" "}
+          {filteredListings.length === 1 ? "result" : "results"} found
+          {listings.filter((l) => l.isInterested).length > 0 && (
+            <span>
+              {" "}
+              • {listings.filter((l) => l.isInterested).length} interested
+            </span>
+          )}
         </div>
 
         {/* Listings Table */}
@@ -900,10 +874,16 @@ export default function MarketListingsPage() {
                       <TableHead className="p-2 min-w-[140px]">
                         Address / Location
                       </TableHead>
-                      <TableHead className="text-right p-2 cursor-pointer hover:bg-muted/50" onClick={() => handleSort("price")}>
+                      <TableHead
+                        className="text-right p-2 cursor-pointer hover:bg-muted/50"
+                        onClick={() => handleSort("price")}
+                      >
                         <div className="flex items-center justify-end text-xs">
                           Price {getSortIcon("price")}
                         </div>
+                      </TableHead>
+                      <TableHead className="text-right p-2 w-20">
+                        <div className="text-xs">Down</div>
                       </TableHead>
                       <TableHead className="text-center p-2 w-12">
                         <div className="text-xs">Bd/Ba</div>
@@ -939,7 +919,6 @@ export default function MarketListingsPage() {
                       <TableHead className="text-right p-2 w-16 bg-green-50 dark:bg-green-950/20">
                         <div className="text-xs">P/R</div>
                       </TableHead>
-                      <TableHead className="text-right p-2 w-12"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -972,8 +951,23 @@ export default function MarketListingsPage() {
                           </Button>
                         </TableCell>
                         <TableCell className="p-2">
-                          <div className="text-xs font-medium leading-tight">
-                            {listing.address1 || listing.address}
+                          <div className="flex items-center gap-2 mb-0.5">
+                            {listing.sourceUrl && (
+                              <Badge
+                                className={`${getSourceColor(
+                                  listing.source
+                                )} text-white text-[10px] h-4 px-1.5 cursor-pointer shrink-0`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  window.open(listing.sourceUrl, "_blank");
+                                }}
+                              >
+                                {listing.source}
+                              </Badge>
+                            )}
+                            <div className="text-xs font-medium leading-tight truncate">
+                              {listing.address1 || listing.address}
+                            </div>
                           </div>
                           <div className="text-xs text-muted-foreground leading-tight">
                             {listing.city}, {listing.state} {listing.zipCode}
@@ -984,6 +978,14 @@ export default function MarketListingsPage() {
                             {formatCurrency(listing.price)}
                           </div>
                         </TableCell>
+                        <TableCell className="text-right p-2">
+                          <div className="text-xs text-muted-foreground">
+                            {formatCurrency(
+                              (listing.price || 0) *
+                                (financingStrategy.downPaymentPercent / 100)
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell className="text-center p-2">
                           <div className="text-xs">
                             {listing.bedrooms || "-"}/{listing.bathrooms || "-"}
@@ -991,12 +993,16 @@ export default function MarketListingsPage() {
                         </TableCell>
                         <TableCell className="text-right p-2">
                           <div className="text-xs">
-                            {listing.squareFeet ? (listing.squareFeet / 1000).toFixed(1) + "k" : "-"}
+                            {listing.squareFeet
+                              ? (listing.squareFeet / 1000).toFixed(1) + "k"
+                              : "-"}
                           </div>
                         </TableCell>
                         <TableCell className="text-center p-2">
                           <div className="text-xs">
-                            {listing.daysOnMarket !== undefined ? listing.daysOnMarket : "-"}
+                            {listing.daysOnMarket !== undefined
+                              ? listing.daysOnMarket
+                              : "-"}
                           </div>
                         </TableCell>
 
@@ -1004,10 +1010,15 @@ export default function MarketListingsPage() {
                         <TableCell className="text-right p-2 bg-blue-50 dark:bg-blue-950/20">
                           {listing.calculatedExpectedRent ? (
                             <div className="text-xs font-medium">
-                              {(listing.calculatedExpectedRent / 1000).toFixed(1)}k
+                              {(listing.calculatedExpectedRent / 1000).toFixed(
+                                1
+                              )}
+                              k
                             </div>
                           ) : (
-                            <span className="text-muted-foreground text-xs">-</span>
+                            <span className="text-muted-foreground text-xs">
+                              -
+                            </span>
                           )}
                         </TableCell>
 
@@ -1024,7 +1035,9 @@ export default function MarketListingsPage() {
                               {listing.calculatedMeets1Percent ? "✓" : "✗"}
                             </Badge>
                           ) : (
-                            <span className="text-muted-foreground text-xs">-</span>
+                            <span className="text-muted-foreground text-xs">
+                              -
+                            </span>
                           )}
                         </TableCell>
                         <TableCell className="text-center p-2 bg-purple-50 dark:bg-purple-950/20">
@@ -1039,7 +1052,9 @@ export default function MarketListingsPage() {
                               {listing.calculatedMeets2Percent ? "✓" : "✗"}
                             </Badge>
                           ) : (
-                            <span className="text-muted-foreground text-xs">-</span>
+                            <span className="text-muted-foreground text-xs">
+                              -
+                            </span>
                           )}
                         </TableCell>
                         <TableCell className="text-center p-2 bg-purple-50 dark:bg-purple-950/20">
@@ -1054,7 +1069,9 @@ export default function MarketListingsPage() {
                               {listing.calculatedMeets50Percent ? "✓" : "✗"}
                             </Badge>
                           ) : (
-                            <span className="text-muted-foreground text-xs">-</span>
+                            <span className="text-muted-foreground text-xs">
+                              -
+                            </span>
                           )}
                         </TableCell>
 
@@ -1062,60 +1079,73 @@ export default function MarketListingsPage() {
                         <TableCell className="text-right p-2 bg-green-50 dark:bg-green-950/20">
                           {listing.calculatedMonthlyCashflow !== undefined ? (
                             <Badge
-                              className={`${getCashflowColor(listing.calculatedMonthlyCashflow).className} text-xs h-5 px-1.5`}
+                              className={`${
+                                getCashflowColor(
+                                  listing.calculatedMonthlyCashflow
+                                ).className
+                              } text-xs h-5 px-1.5`}
                             >
-                              {listing.calculatedMonthlyCashflow >= 0 ? "+" : ""}{(listing.calculatedMonthlyCashflow / 1000).toFixed(1)}k
+                              {listing.calculatedMonthlyCashflow >= 0
+                                ? "+"
+                                : "-"}
+                              $
+                              {Math.abs(
+                                listing.calculatedMonthlyCashflow
+                              ).toFixed(0)}
                             </Badge>
                           ) : (
-                            <span className="text-muted-foreground text-xs">-</span>
+                            <span className="text-muted-foreground text-xs">
+                              -
+                            </span>
                           )}
                         </TableCell>
                         <TableCell className="text-right p-2 bg-green-50 dark:bg-green-950/20">
                           {listing.calculatedCapRate !== undefined ? (
                             <Badge
-                              className={`${getCapRateColor(listing.calculatedCapRate).className} text-xs h-5 px-1.5`}
+                              className={`${
+                                getCapRateColor(listing.calculatedCapRate)
+                                  .className
+                              } text-xs h-5 px-1.5`}
                             >
                               {listing.calculatedCapRate.toFixed(1)}
                             </Badge>
                           ) : (
-                            <span className="text-muted-foreground text-xs">-</span>
+                            <span className="text-muted-foreground text-xs">
+                              -
+                            </span>
                           )}
                         </TableCell>
                         <TableCell className="text-right p-2 bg-green-50 dark:bg-green-950/20">
                           {listing.calculatedCashOnCash !== undefined ? (
                             <Badge
-                              className={`${getCocColor(listing.calculatedCashOnCash).className} text-xs h-5 px-1.5`}
+                              className={`${
+                                getCocColor(listing.calculatedCashOnCash)
+                                  .className
+                              } text-xs h-5 px-1.5`}
                             >
                               {listing.calculatedCashOnCash.toFixed(1)}
                             </Badge>
                           ) : (
-                            <span className="text-muted-foreground text-xs">-</span>
+                            <span className="text-muted-foreground text-xs">
+                              -
+                            </span>
                           )}
                         </TableCell>
                         <TableCell className="text-right p-2 bg-green-50 dark:bg-green-950/20">
                           {listing.calculatedPriceToRent !== undefined ? (
                             <Badge
-                              className={`${getPriceToRentColor(listing.calculatedPriceToRent).className} text-xs h-5 px-1.5`}
+                              className={`${
+                                getPriceToRentColor(
+                                  listing.calculatedPriceToRent
+                                ).className
+                              } text-xs h-5 px-1.5`}
                             >
                               {listing.calculatedPriceToRent.toFixed(0)}
                             </Badge>
                           ) : (
-                            <span className="text-muted-foreground text-xs">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right p-2">
-                          {listing.sourceUrl && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                window.open(listing.sourceUrl, "_blank");
-                              }}
-                            >
-                              <ExternalLink className="h-3 w-3" />
-                            </Button>
+                            <span className="text-muted-foreground text-xs">
+                              -
+                            </span>
                           )}
                         </TableCell>
                       </TableRow>
@@ -1448,11 +1478,15 @@ export default function MarketListingsPage() {
                         </div>
                       </div>
                       <div className="mt-3 text-xs text-muted-foreground italic">
-                        * Property tax estimated at 1.1% annually (~
-                        {((selectedListing.price || 0) * 0.011).toFixed(0)}
-                        /year)
-                        <br />* Insurance estimated at $0.35 per $1000 of home
-                        value
+                        * Property tax based on {selectedListing.state} rate (
+                        {selectedListing.calculatedMonthlyPropertyTax
+                          ? `~$${(
+                              selectedListing.calculatedMonthlyPropertyTax * 12
+                            ).toFixed(0)}/year`
+                          : "varies by state"}
+                        )
+                        <br />* Insurance estimated based on property value
+                        (0.25-0.5% annually)
                       </div>
                     </div>
 
