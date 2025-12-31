@@ -1,5 +1,6 @@
 import { apiRequest } from "../api-client";
 import type {
+  ExpectedRentResponse,
   MarketListingResponse,
   MarketListingWithPreferenceResponse,
 } from "./types";
@@ -125,5 +126,28 @@ export const marketListingsApi = {
         method: "PUT",
       }
     );
+  },
+
+  // Get expected rent by ZIP code and bedrooms
+  getExpectedRent: async (
+    zipCode: string,
+    bedrooms: number
+  ): Promise<ExpectedRentResponse | null> => {
+    try {
+      return apiRequest<ExpectedRentResponse>(
+        `/api/expected-rent/lookup?zipCode=${encodeURIComponent(
+          zipCode
+        )}&bedrooms=${bedrooms}`,
+        {
+          method: "GET",
+        }
+      );
+    } catch (error) {
+      // Return null if no expected rent data is available
+      console.warn(
+        `No expected rent data for ${zipCode} with ${bedrooms} bedrooms`
+      );
+      return null;
+    }
   },
 };

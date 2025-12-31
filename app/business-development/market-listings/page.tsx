@@ -40,6 +40,12 @@ import { useToast } from "@/hooks/use-toast";
 import { marketListingsApi } from "@/lib/api/market-listings";
 import type { MarketListingResponse } from "@/lib/api/types";
 import {
+  calculateInvestmentMetrics,
+  estimateMonthlyPropertyTax,
+  estimateMonthlyInsurance,
+  type FinancingStrategy,
+} from "@/lib/investment-calculations";
+import {
   ArrowUpDown,
   Bath,
   Bed,
@@ -95,6 +101,16 @@ export default function MarketListingsPage() {
   // Search state
   const [searchQuery, setSearchQuery] = useState<string>("");
 
+  // Financing strategy state
+  const [financingStrategy, setFinancingStrategy] = useState<FinancingStrategy>(
+    {
+      downPaymentPercent: 20,
+      interestRate: 6,
+      loanTermYears: 30,
+    }
+  );
+  const [loadingExpectedRents, setLoadingExpectedRents] = useState(false);
+
   useEffect(() => {
     loadListings();
   }, []);
@@ -123,6 +139,8 @@ export default function MarketListingsPage() {
       setLoading(true);
       const data = await marketListingsApi.getAll();
       setListings(data);
+      // Load expected rents for all listings
+      await loadExpectedRents(data);
     } catch (error) {
       console.error("Failed to load market listings:", error);
       toast({
@@ -133,6 +151,63 @@ export default function MarketListingsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadExpectedRents = async (listingsData: MarketListingResponse[]) => {
+    setLoadingExpectedRents(true);
+    const updatedListings = await Promise.all(
+      listingsData.map(async (listing) => {
+        if (!listing.zipCode || !listing.bedrooms || !listing.price) {
+          return listing;
+        }
+
+        try {
+          const expectedRentData = await marketListingsApi.getExpectedRent(
+            listing.zipCode,
+            listing.bedrooms
+          );
+
+          if (!expectedRentData) {
+            return listing;
+          }
+
+          // Calculate investment metrics
+          const metrics = calculateInvestmentMetrics(
+            listing.price,
+            expectedRentData.expectedRent,
+            financingStrategy,
+            listing.hoaFee || 0,
+            estimateMonthlyPropertyTax(listing.price),
+            estimateMonthlyInsurance(listing.price)
+          );
+
+          return {
+            ...listing,
+            calculatedExpectedRent: expectedRentData.expectedRent,
+            calculatedMonthlyPayment: metrics.monthlyMortgagePayment,
+            calculatedCashOnCash: metrics.cashOnCashReturn,
+            calculatedMeets1Percent: metrics.meets1PercentRule,
+          };
+        } catch (error) {
+          console.error(
+            `Failed to load expected rent for listing ${listing.id}:`,
+            error
+          );
+          return listing;
+        }
+      })
+    );
+    setListings(updatedListings);
+    setLoadingExpectedRents(false);
+  };
+
+  const recalculateMetrics = async () => {
+    await loadExpectedRents(listings);
+    toast({
+      title: "Success",
+      description:
+        "Investment metrics recalculated with new financing strategy.",
+    });
   };
 
   const applyFilters = () => {
@@ -527,6 +602,85 @@ export default function MarketListingsPage() {
           </Card>
         )}
 
+        {/* Financing Strategy Section */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Financing Strategy</CardTitle>
+                <CardDescription>
+                  Set your financing assumptions to calculate investment metrics
+                </CardDescription>
+              </div>
+              <Button
+                size="sm"
+                onClick={recalculateMetrics}
+                disabled={loadingExpectedRents}
+              >
+                {loadingExpectedRents ? "Calculating..." : "Recalculate"}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="downPayment">Down Payment (%)</Label>
+                <Input
+                  id="downPayment"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={financingStrategy.downPaymentPercent}
+                  onChange={(e) =>
+                    setFinancingStrategy({
+                      ...financingStrategy,
+                      downPaymentPercent: parseFloat(e.target.value) || 0,
+                    })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="interestRate">Interest Rate (%)</Label>
+                <Input
+                  id="interestRate"
+                  type="number"
+                  min="0"
+                  max="20"
+                  step="0.1"
+                  value={financingStrategy.interestRate}
+                  onChange={(e) =>
+                    setFinancingStrategy({
+                      ...financingStrategy,
+                      interestRate: parseFloat(e.target.value) || 0,
+                    })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="loanTerm">Loan Term (years)</Label>
+                <Select
+                  value={financingStrategy.loanTermYears.toString()}
+                  onValueChange={(value) =>
+                    setFinancingStrategy({
+                      ...financingStrategy,
+                      loanTermYears: parseInt(value),
+                    })
+                  }
+                >
+                  <SelectTrigger id="loanTerm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="15">15 years</SelectItem>
+                    <SelectItem value="20">20 years</SelectItem>
+                    <SelectItem value="30">30 years</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Stats Summary */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
@@ -689,6 +843,9 @@ export default function MarketListingsPage() {
                           {getSortIcon("daysOnMarket")}
                         </div>
                       </TableHead>
+                      <TableHead className="text-right">Est. Rent</TableHead>
+                      <TableHead className="text-center">1% Rule</TableHead>
+                      <TableHead className="text-right">CoC Return</TableHead>
                       <TableHead>Source</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -781,6 +938,50 @@ export default function MarketListingsPage() {
                           {listing.daysOnMarket !== undefined
                             ? listing.daysOnMarket
                             : "-"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {listing.calculatedExpectedRent ? (
+                            <div className="font-medium">
+                              {formatCurrency(listing.calculatedExpectedRent)}
+                              <div className="text-xs text-muted-foreground font-normal">
+                                /month
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {listing.calculatedMeets1Percent !== undefined ? (
+                            <Badge
+                              variant={
+                                listing.calculatedMeets1Percent
+                                  ? "default"
+                                  : "secondary"
+                              }
+                            >
+                              {listing.calculatedMeets1Percent ? "✓" : "✗"}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {listing.calculatedCashOnCash !== undefined ? (
+                            <div
+                              className={`font-medium ${
+                                listing.calculatedCashOnCash >= 8
+                                  ? "text-green-600"
+                                  : listing.calculatedCashOnCash >= 5
+                                  ? "text-yellow-600"
+                                  : "text-red-600"
+                              }`}
+                            >
+                              {listing.calculatedCashOnCash.toFixed(1)}%
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
                         </TableCell>
                         <TableCell className="text-sm">
                           {listing.source}
@@ -995,6 +1196,100 @@ export default function MarketListingsPage() {
                           </div>
                         </div>
                       )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Investment Metrics */}
+                {selectedListing.calculatedExpectedRent && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                      <TrendingUp className="h-5 w-5" />
+                      Investment Analysis
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
+                      <div>
+                        <div className="text-sm text-muted-foreground mb-1">
+                          Expected Monthly Rent
+                        </div>
+                        <div className="text-2xl font-bold text-green-600">
+                          {formatCurrency(
+                            selectedListing.calculatedExpectedRent
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted-foreground mb-1">
+                          Monthly Mortgage Payment
+                        </div>
+                        <div className="text-2xl font-bold">
+                          {selectedListing.calculatedMonthlyPayment
+                            ? formatCurrency(
+                                selectedListing.calculatedMonthlyPayment
+                              )
+                            : "N/A"}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted-foreground mb-1">
+                          1% Rule
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant={
+                              selectedListing.calculatedMeets1Percent
+                                ? "default"
+                                : "secondary"
+                            }
+                            className="text-lg px-3 py-1"
+                          >
+                            {selectedListing.calculatedMeets1Percent
+                              ? "✓ Passes"
+                              : "✗ Fails"}
+                          </Badge>
+                          {selectedListing.price && (
+                            <span className="text-xs text-muted-foreground">
+                              (Need{" "}
+                              {formatCurrency(selectedListing.price * 0.01)}/mo)
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted-foreground mb-1">
+                          Cash on Cash Return
+                        </div>
+                        <div
+                          className={`text-2xl font-bold ${
+                            (selectedListing.calculatedCashOnCash || 0) >= 8
+                              ? "text-green-600"
+                              : (selectedListing.calculatedCashOnCash || 0) >= 5
+                              ? "text-yellow-600"
+                              : "text-red-600"
+                          }`}
+                        >
+                          {selectedListing.calculatedCashOnCash !== undefined
+                            ? `${selectedListing.calculatedCashOnCash.toFixed(
+                                1
+                              )}%`
+                            : "N/A"}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {(selectedListing.calculatedCashOnCash || 0) >= 8
+                            ? "Excellent"
+                            : (selectedListing.calculatedCashOnCash || 0) >= 5
+                            ? "Good"
+                            : "Below Average"}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                      <div className="text-xs text-muted-foreground">
+                        <strong>Financing:</strong>{" "}
+                        {financingStrategy.downPaymentPercent}% down,{" "}
+                        {financingStrategy.interestRate}% interest,{" "}
+                        {financingStrategy.loanTermYears} years
+                      </div>
                     </div>
                   </div>
                 )}

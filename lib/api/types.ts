@@ -368,9 +368,6 @@ export interface MarketListingResponse {
   createdAt: string; // format: date-time
   updatedAt: string; // format: date-time
   lastScrapedAt?: string; // format: date-time
-  // Optional fields that may be included when user preferences are loaded
-  isInterested?: boolean; // User marked as interested in this listing
-  notes?: string; // User notes about this listing
 }
 
 export interface MarketListingWithPreferenceResponse {
