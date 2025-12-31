@@ -412,3 +412,15 @@ export interface MarketListingWithPreferenceResponse {
   isInterested: boolean; // User marked as interested in this listing
   notes?: string; // User notes about this listing
 }
+
+// Expected Rent types
+export interface ExpectedRentResponse {
+  id: string; // format: uuid
+  zipCode: string; // ZIP code
+  bedrooms: number; // format: int32 - Number of bedrooms
+  expectedRent: number; // Expected rent amount
+  source: string; // Data source
+  effectiveDate: string; // format: date - Effective date of the rent standard
+  createdAt: string; // format: date-time
+  updatedAt: string; // format: date-time
+}
