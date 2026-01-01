@@ -3,6 +3,12 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -28,6 +34,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Slider } from "@/components/ui/slider";
 import {
   Table,
   TableBody,
@@ -96,8 +103,10 @@ export default function MarketListingsPage() {
   const [filterMinBaths, setFilterMinBaths] = useState<string>("");
   const [filterCity, setFilterCity] = useState<string>("");
   const [filterState, setFilterState] = useState<string>("");
+  const [filterCashflowRange, setFilterCashflowRange] = useState<
+    [number, number]
+  >([0, 2500]);
   const [showInterestedOnly, setShowInterestedOnly] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
 
   // Sort states
   type SortField =
@@ -129,6 +138,12 @@ export default function MarketListingsPage() {
   }, []);
 
   useEffect(() => {
+    if (listings.length > 0) {
+      loadExpectedRents(listings);
+    }
+  }, [financingStrategy]);
+
+  useEffect(() => {
     applyFilters();
   }, [
     listings,
@@ -141,6 +156,7 @@ export default function MarketListingsPage() {
     filterMinBaths,
     filterCity,
     filterState,
+    filterCashflowRange,
     showInterestedOnly,
     searchQuery,
     sortField,
@@ -287,15 +303,6 @@ export default function MarketListingsPage() {
     setLoadingExpectedRents(false);
   };
 
-  const recalculateMetrics = async () => {
-    await loadExpectedRents(listings);
-    toast({
-      title: "Success",
-      description:
-        "Investment metrics recalculated with new financing strategy.",
-    });
-  };
-
   const applyFilters = () => {
     let filtered = [...listings];
 
@@ -349,6 +356,14 @@ export default function MarketListingsPage() {
         l.state?.toLowerCase().includes(filterState.toLowerCase())
       );
     }
+
+    // Cashflow filter
+    filtered = filtered.filter((l) => {
+      const cashflow = l.calculatedMonthlyCashflow || 0;
+      return (
+        cashflow >= filterCashflowRange[0] && cashflow <= filterCashflowRange[1]
+      );
+    });
 
     // Interested filter
     if (showInterestedOnly) {
@@ -428,6 +443,7 @@ export default function MarketListingsPage() {
     setFilterMinBaths("");
     setFilterCity("");
     setFilterState("");
+    setFilterCashflowRange([0, 2500]);
     setShowInterestedOnly(false);
     setSearchQuery("");
     setSortField(null);
@@ -676,251 +692,323 @@ export default function MarketListingsPage() {
             <Star className="mr-2 h-4 w-4" />
             Interested {showInterestedOnly && `(${filteredListings.length})`}
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            <Filter className="mr-2 h-4 w-4" />
-            Filters
-          </Button>
         </div>
       </header>
 
       <main className="p-6 space-y-6">
-        {/* Filters Section */}
-        {showFilters && (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Filter Listings</CardTitle>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" onClick={clearFilters}>
-                    Clear All
-                  </Button>
+        {/* Consolidated Filters & Financing Strategy */}
+        <Card>
+          <Accordion type="single" collapsible defaultValue="filters">
+            <AccordionItem value="filters" className="border-0">
+              <AccordionTrigger className="px-6 hover:no-underline">
+                <div className="flex items-center justify-between w-full pr-4">
+                  <div className="flex items-center gap-3">
+                    <Filter className="h-4 w-4" />
+                    <span className="font-semibold">Filters & Financing</span>
+                    <Badge variant="outline" className="text-xs">
+                      {filteredListings.length} results
+                    </Badge>
+                  </div>
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setShowFilters(false)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      clearFilters();
+                    }}
+                    className="h-7 text-xs"
                   >
-                    <X className="h-4 w-4" />
+                    Clear All
                   </Button>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="space-y-2">
-                  <Label>Source</Label>
-                  <Select value={filterSource} onValueChange={setFilterSource}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Sources</SelectItem>
-                      {getUniqueValues("source").map((source) => (
-                        <SelectItem
-                          key={source as string}
-                          value={source as string}
+              </AccordionTrigger>
+              <AccordionContent className="px-6">
+                <div className="space-y-4">
+                  {/* Financing Strategy - Compact */}
+                  <div className="space-y-2">
+                    <Label className="text-xs font-semibold text-muted-foreground">
+                      FINANCING STRATEGY
+                    </Label>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="space-y-1">
+                        <Label htmlFor="downPayment" className="text-xs">
+                          Down Payment (%)
+                        </Label>
+                        <Input
+                          id="downPayment"
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={financingStrategy.downPaymentPercent}
+                          onChange={(e) =>
+                            setFinancingStrategy({
+                              ...financingStrategy,
+                              downPaymentPercent:
+                                parseFloat(e.target.value) || 0,
+                            })
+                          }
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="interestRate" className="text-xs">
+                          Interest Rate (%)
+                        </Label>
+                        <Input
+                          id="interestRate"
+                          type="number"
+                          min="0"
+                          max="20"
+                          step="0.1"
+                          value={financingStrategy.interestRate}
+                          onChange={(e) =>
+                            setFinancingStrategy({
+                              ...financingStrategy,
+                              interestRate: parseFloat(e.target.value) || 0,
+                            })
+                          }
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="loanTerm" className="text-xs">
+                          Loan Term
+                        </Label>
+                        <Select
+                          value={financingStrategy.loanTermYears.toString()}
+                          onValueChange={(value) =>
+                            setFinancingStrategy({
+                              ...financingStrategy,
+                              loanTermYears: parseInt(value),
+                            })
+                          }
                         >
-                          {source as string}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                          <SelectTrigger id="loanTerm" className="h-8 text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="15">15 years</SelectItem>
+                            <SelectItem value="20">20 years</SelectItem>
+                            <SelectItem value="30">30 years</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
 
-                <div className="space-y-2">
-                  <Label>Property Type</Label>
-                  <Select
-                    value={filterPropertyType}
-                    onValueChange={setFilterPropertyType}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Types</SelectItem>
-                      {getUniqueValues("propertyType").map((type) => (
-                        <SelectItem key={type as string} value={type as string}>
-                          {type as string}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                  <Separator />
 
-                <div className="space-y-2">
-                  <Label>Status</Label>
-                  <Select value={filterStatus} onValueChange={setFilterStatus}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Statuses</SelectItem>
-                      {getUniqueValues("listingStatus").map((status) => (
-                        <SelectItem
-                          key={status as string}
-                          value={status as string}
+                  {/* Property Filters - Compact */}
+                  <div className="space-y-2">
+                    <Label className="text-xs font-semibold text-muted-foreground">
+                      PROPERTY FILTERS
+                    </Label>
+                    <div className="grid grid-cols-5 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Source</Label>
+                        <Select
+                          value={filterSource}
+                          onValueChange={setFilterSource}
                         >
-                          {status as string}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                          <SelectTrigger className="h-8 text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All</SelectItem>
+                            {getUniqueValues("source").map((source) => (
+                              <SelectItem
+                                key={source as string}
+                                value={source as string}
+                              >
+                                {source as string}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                <div className="space-y-2">
-                  <Label>City</Label>
-                  <Input
-                    placeholder="e.g., Boston"
-                    value={filterCity}
-                    onChange={(e) => setFilterCity(e.target.value)}
-                  />
-                </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Type</Label>
+                        <Select
+                          value={filterPropertyType}
+                          onValueChange={setFilterPropertyType}
+                        >
+                          <SelectTrigger className="h-8 text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All</SelectItem>
+                            {getUniqueValues("propertyType").map((type) => (
+                              <SelectItem
+                                key={type as string}
+                                value={type as string}
+                              >
+                                {type as string}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                <div className="space-y-2">
-                  <Label>State</Label>
-                  <Input
-                    placeholder="e.g., MA"
-                    value={filterState}
-                    onChange={(e) => setFilterState(e.target.value)}
-                  />
-                </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Status</Label>
+                        <Select
+                          value={filterStatus}
+                          onValueChange={setFilterStatus}
+                        >
+                          <SelectTrigger className="h-8 text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All</SelectItem>
+                            {getUniqueValues("listingStatus").map((status) => (
+                              <SelectItem
+                                key={status as string}
+                                value={status as string}
+                              >
+                                {status as string}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                <div className="space-y-2">
-                  <Label>Min Price</Label>
-                  <Input
-                    type="number"
-                    placeholder="Min"
-                    value={filterMinPrice}
-                    onChange={(e) => setFilterMinPrice(e.target.value)}
-                  />
-                </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">City</Label>
+                        <Input
+                          placeholder="City"
+                          value={filterCity}
+                          onChange={(e) => setFilterCity(e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                      </div>
 
-                <div className="space-y-2">
-                  <Label>Max Price</Label>
-                  <Input
-                    type="number"
-                    placeholder="Max"
-                    value={filterMaxPrice}
-                    onChange={(e) => setFilterMaxPrice(e.target.value)}
-                  />
-                </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">State</Label>
+                        <Input
+                          placeholder="State"
+                          value={filterState}
+                          onChange={(e) => setFilterState(e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                    </div>
 
-                <div className="space-y-2">
-                  <Label>Min Beds</Label>
-                  <Input
-                    type="number"
-                    placeholder="Min"
-                    value={filterMinBeds}
-                    onChange={(e) => setFilterMinBeds(e.target.value)}
-                  />
-                </div>
+                    <div className="grid grid-cols-4 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Min Price</Label>
+                        <Input
+                          type="number"
+                          placeholder="Min"
+                          value={filterMinPrice}
+                          onChange={(e) => setFilterMinPrice(e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                      </div>
 
-                <div className="space-y-2">
-                  <Label>Min Baths</Label>
-                  <Input
-                    type="number"
-                    step="0.5"
-                    placeholder="Min"
-                    value={filterMinBaths}
-                    onChange={(e) => setFilterMinBaths(e.target.value)}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                      <div className="space-y-1">
+                        <Label className="text-xs">Max Price</Label>
+                        <Input
+                          type="number"
+                          placeholder="Max"
+                          value={filterMaxPrice}
+                          onChange={(e) => setFilterMaxPrice(e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                      </div>
 
-        {/* Financing Strategy Section */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Financing Strategy</CardTitle>
-                <CardDescription>
-                  Set your financing assumptions to calculate investment metrics
-                </CardDescription>
-              </div>
-              <Button
-                size="sm"
-                onClick={recalculateMetrics}
-                disabled={loadingExpectedRents}
-              >
-                {loadingExpectedRents ? "Calculating..." : "Recalculate"}
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="downPayment">Down Payment (%)</Label>
-                <Input
-                  id="downPayment"
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={financingStrategy.downPaymentPercent}
-                  onChange={(e) =>
-                    setFinancingStrategy({
-                      ...financingStrategy,
-                      downPaymentPercent: parseFloat(e.target.value) || 0,
-                    })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="interestRate">Interest Rate (%)</Label>
-                <Input
-                  id="interestRate"
-                  type="number"
-                  min="0"
-                  max="20"
-                  step="0.1"
-                  value={financingStrategy.interestRate}
-                  onChange={(e) =>
-                    setFinancingStrategy({
-                      ...financingStrategy,
-                      interestRate: parseFloat(e.target.value) || 0,
-                    })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="loanTerm">Loan Term (years)</Label>
-                <Select
-                  value={financingStrategy.loanTermYears.toString()}
-                  onValueChange={(value) =>
-                    setFinancingStrategy({
-                      ...financingStrategy,
-                      loanTermYears: parseInt(value),
-                    })
-                  }
-                >
-                  <SelectTrigger id="loanTerm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="15">15 years</SelectItem>
-                    <SelectItem value="20">20 years</SelectItem>
-                    <SelectItem value="30">30 years</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </CardContent>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Min Beds</Label>
+                        <Input
+                          type="number"
+                          placeholder="Min"
+                          value={filterMinBeds}
+                          onChange={(e) => setFilterMinBeds(e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label className="text-xs">Min Baths</Label>
+                        <Input
+                          type="number"
+                          step="0.5"
+                          placeholder="Min"
+                          value={filterMinBaths}
+                          onChange={(e) => setFilterMinBaths(e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Analytics Filters - Compact */}
+                  <div className="space-y-2">
+                    <Label className="text-xs font-semibold text-muted-foreground">
+                      ANALYTICS FILTERS
+                    </Label>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs">Monthly Cashflow</Label>
+                        <span className="text-xs text-muted-foreground">
+                          {new Intl.NumberFormat("en-US", {
+                            style: "currency",
+                            currency: "USD",
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 0,
+                          }).format(filterCashflowRange[0])}{" "}
+                          -{" "}
+                          {new Intl.NumberFormat("en-US", {
+                            style: "currency",
+                            currency: "USD",
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 0,
+                          }).format(filterCashflowRange[1])}
+                        </span>
+                      </div>
+                      <Slider
+                        min={0}
+                        max={2500}
+                        step={50}
+                        value={filterCashflowRange}
+                        onValueChange={(value) =>
+                          setFilterCashflowRange(value as [number, number])
+                        }
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </Card>
 
         {/* Search Results */}
-        <div className="text-sm text-muted-foreground">
-          {filteredListings.length}{" "}
-          {filteredListings.length === 1 ? "result" : "results"} found
-          {listings.filter((l) => l.isInterested).length > 0 && (
-            <span>
-              {" "}
-              • {listings.filter((l) => l.isInterested).length} interested
+        <div className="flex items-center gap-4 text-sm">
+          <div>
+            <span className="font-semibold">{filteredListings.length}</span>{" "}
+            <span className="text-muted-foreground">
+              {filteredListings.length === 1 ? "result" : "results"}
             </span>
+            {filteredListings.length !== listings.length && (
+              <span className="text-muted-foreground">
+                {" "}
+                of {listings.length}
+              </span>
+            )}
+          </div>
+          {filteredListings.length !== listings.length && (
+            <Badge variant="secondary" className="text-xs">
+              {listings.length - filteredListings.length} hidden by filters
+            </Badge>
+          )}
+          {listings.filter((l) => l.isInterested).length > 0 && (
+            <div className="text-muted-foreground">
+              • {listings.filter((l) => l.isInterested).length} interested
+            </div>
           )}
         </div>
 
