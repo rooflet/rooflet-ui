@@ -113,6 +113,8 @@ export default function MarketListingsPage() {
     [number, number]
   >([0, 2500]);
   const [showInterestedOnly, setShowInterestedOnly] = useState(false);
+  const [hideListingsWithoutCashflow, setHideListingsWithoutCashflow] =
+    useState(true);
 
   // Sort states
   type SortField =
@@ -180,6 +182,7 @@ export default function MarketListingsPage() {
     filterState,
     filterCashflowRange,
     showInterestedOnly,
+    hideListingsWithoutCashflow,
     searchQuery,
     sortField,
     sortDirection,
@@ -374,6 +377,13 @@ export default function MarketListingsPage() {
       );
     }
 
+    // Hide listings without calculable cashflow
+    if (hideListingsWithoutCashflow) {
+      filtered = filtered.filter(
+        (l) => l.calculatedMonthlyCashflow !== undefined
+      );
+    }
+
     // Cashflow filter
     filtered = filtered.filter((l) => {
       const cashflow = l.calculatedMonthlyCashflow || 0;
@@ -493,6 +503,7 @@ export default function MarketListingsPage() {
     setFilterState("");
     setFilterCashflowRange([0, 2500]);
     setShowInterestedOnly(false);
+    setHideListingsWithoutCashflow(true);
     setSearchQuery("");
     setSortField(null);
   };
@@ -955,13 +966,30 @@ export default function MarketListingsPage() {
 
                   <Separator className="my-1.5" />
 
-                  {/* Analytics Filters - Compact */}
-                  <div className="space-y-1">
+                  {/* Analytics Filters */}
+                  <div className="space-y-3">
                     <Label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
                       ANALYTICS FILTERS
                     </Label>
-                    <div className="space-y-1 w-full lg:w-[400px]">
-                      <div className="space-y-0.5">
+                    <div className="space-y-3 w-full lg:w-[400px]">
+                      <div className="flex items-center space-x-2 py-2">
+                        <input
+                          type="checkbox"
+                          id="hideWithoutCashflow"
+                          checked={hideListingsWithoutCashflow}
+                          onChange={(e) =>
+                            setHideListingsWithoutCashflow(e.target.checked)
+                          }
+                          className="h-3.5 w-3.5 rounded border-gray-300"
+                        />
+                        <Label
+                          htmlFor="hideWithoutCashflow"
+                          className="text-xs font-normal cursor-pointer"
+                        >
+                          Hide listings where CF/mo cannot be calculated
+                        </Label>
+                      </div>
+                      <div className="space-y-1">
                         <Label className="text-[11px]">Monthly Cashflow</Label>
                         <div className="text-[11px] text-muted-foreground">
                           {new Intl.NumberFormat("en-US", {
