@@ -43,6 +43,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { marketListingsApi } from "@/lib/api/market-listings";
 import type {
@@ -64,6 +70,7 @@ import {
   type FinancingStrategy,
 } from "@/lib/investment-calculations";
 import {
+  AlertTriangle,
   ArrowUpDown,
   Bath,
   Bed,
@@ -716,6 +723,15 @@ export default function MarketListingsPage() {
     });
   };
 
+  const isListingStale = (dateString?: string) => {
+    if (!dateString) return false;
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+    return diffDays > 1;
+  };
+
   const formatTimeAgo = (dateString?: string) => {
     if (!dateString) return "N/A";
     const now = new Date();
@@ -1356,7 +1372,22 @@ export default function MarketListingsPage() {
                           <div className="text-xs text-muted-foreground leading-tight">
                             {listing.city}, {listing.state} {listing.zipCode}
                           </div>
-                          <div className="text-[10px] text-muted-foreground/70 leading-tight mt-0.5">
+                          <div className="text-[10px] text-muted-foreground/70 leading-tight mt-0.5 flex items-center gap-1">
+                            {isListingStale(listing.updatedAt) && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <AlertTriangle className="h-3 w-3 text-amber-500" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>
+                                      This listing is older than 1 day and may
+                                      have changed status
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
                             Updated {formatTimeAgo(listing.updatedAt)}
                           </div>
                         </TableCell>
