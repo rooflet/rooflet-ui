@@ -96,7 +96,6 @@ export default function MarketListingsPage() {
   // Filter states
   const [filterSource, setFilterSource] = useState<string>("all");
   const [filterPropertyType, setFilterPropertyType] = useState<string>("all");
-  const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterMinPrice, setFilterMinPrice] = useState<string>("");
   const [filterMaxPrice, setFilterMaxPrice] = useState<string>("");
   const [filterMinBeds, setFilterMinBeds] = useState<string>("");
@@ -159,7 +158,6 @@ export default function MarketListingsPage() {
     listings,
     filterSource,
     filterPropertyType,
-    filterStatus,
     filterMinPrice,
     filterMaxPrice,
     filterMinBeds,
@@ -326,11 +324,6 @@ export default function MarketListingsPage() {
       filtered = filtered.filter((l) => l.propertyType === filterPropertyType);
     }
 
-    // Status filter
-    if (filterStatus !== "all") {
-      filtered = filtered.filter((l) => l.listingStatus === filterStatus);
-    }
-
     // Price range filter
     if (filterMinPrice) {
       const minPrice = parseFloat(filterMinPrice);
@@ -478,7 +471,6 @@ export default function MarketListingsPage() {
   const clearFilters = () => {
     setFilterSource("all");
     setFilterPropertyType("all");
-    setFilterStatus("all");
     setFilterMinPrice("");
     setFilterMaxPrice("");
     setFilterMinBeds("");
@@ -767,14 +759,11 @@ export default function MarketListingsPage() {
         <Card>
           <Accordion type="single" collapsible defaultValue="filters">
             <AccordionItem value="filters" className="border-0">
-              <AccordionTrigger className="px-6 hover:no-underline">
-                <div className="flex items-center justify-between w-full pr-4">
+              <AccordionTrigger className="px-4 py-2 hover:no-underline">
+                <div className="flex items-center justify-between w-full pr-2">
                   <div className="flex items-center gap-3">
                     <Filter className="h-4 w-4" />
                     <span className="font-semibold">Filters & Financing</span>
-                    <Badge variant="outline" className="text-xs">
-                      {filteredListings.length} results
-                    </Badge>
                   </div>
                   <Button
                     variant="ghost"
@@ -789,16 +778,16 @@ export default function MarketListingsPage() {
                   </Button>
                 </div>
               </AccordionTrigger>
-              <AccordionContent className="px-6">
-                <div className="space-y-4">
+              <AccordionContent className="px-4 pb-2">
+                <div className="space-y-2">
                   {/* Financing Strategy - Compact */}
-                  <div className="space-y-2">
-                    <Label className="text-xs font-semibold text-muted-foreground">
+                  <div className="space-y-1">
+                    <Label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
                       FINANCING STRATEGY
                     </Label>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="space-y-1">
-                        <Label htmlFor="downPayment" className="text-xs">
+                    <div className="grid grid-cols-3 gap-1.5">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="downPayment" className="text-[11px]">
                           Down Payment (%)
                         </Label>
                         <Input
@@ -814,11 +803,11 @@ export default function MarketListingsPage() {
                                 parseFloat(e.target.value) || 0,
                             })
                           }
-                          className="h-8 text-sm"
+                          className="h-7 text-xs"
                         />
                       </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="interestRate" className="text-xs">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="interestRate" className="text-[11px]">
                           Interest Rate (%)
                         </Label>
                         <Input
@@ -834,11 +823,11 @@ export default function MarketListingsPage() {
                               interestRate: parseFloat(e.target.value) || 0,
                             })
                           }
-                          className="h-8 text-sm"
+                          className="h-7 text-xs"
                         />
                       </div>
-                      <div className="space-y-1">
-                        <Label htmlFor="loanTerm" className="text-xs">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="loanTerm" className="text-[11px]">
                           Loan Term
                         </Label>
                         <Select
@@ -850,7 +839,7 @@ export default function MarketListingsPage() {
                             })
                           }
                         >
-                          <SelectTrigger id="loanTerm" className="h-8 text-sm">
+                          <SelectTrigger id="loanTerm" className="h-7 text-xs">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -863,163 +852,17 @@ export default function MarketListingsPage() {
                     </div>
                   </div>
 
-                  <Separator />
-
-                  {/* Property Filters - Compact */}
-                  <div className="space-y-2">
-                    <Label className="text-xs font-semibold text-muted-foreground">
-                      PROPERTY FILTERS
-                    </Label>
-                    <div className="grid grid-cols-5 gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-xs">Source</Label>
-                        <Select
-                          value={filterSource}
-                          onValueChange={setFilterSource}
-                        >
-                          <SelectTrigger className="h-8 text-sm">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All</SelectItem>
-                            {getUniqueValues("source").map((source) => (
-                              <SelectItem
-                                key={source as string}
-                                value={source as string}
-                              >
-                                {source as string}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-1">
-                        <Label className="text-xs">Type</Label>
-                        <Select
-                          value={filterPropertyType}
-                          onValueChange={setFilterPropertyType}
-                        >
-                          <SelectTrigger className="h-8 text-sm">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All</SelectItem>
-                            {getUniqueValues("propertyType").map((type) => (
-                              <SelectItem
-                                key={type as string}
-                                value={type as string}
-                              >
-                                {type as string}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-1">
-                        <Label className="text-xs">Status</Label>
-                        <Select
-                          value={filterStatus}
-                          onValueChange={setFilterStatus}
-                        >
-                          <SelectTrigger className="h-8 text-sm">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All</SelectItem>
-                            {getUniqueValues("listingStatus").map((status) => (
-                              <SelectItem
-                                key={status as string}
-                                value={status as string}
-                              >
-                                {status as string}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-1">
-                        <Label className="text-xs">City</Label>
-                        <Input
-                          placeholder="City"
-                          value={filterCity}
-                          onChange={(e) => setFilterCity(e.target.value)}
-                          className="h-8 text-sm"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <Label className="text-xs">State</Label>
-                        <Input
-                          placeholder="State"
-                          value={filterState}
-                          onChange={(e) => setFilterState(e.target.value)}
-                          className="h-8 text-sm"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-4 gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-xs">Min Price</Label>
-                        <Input
-                          type="number"
-                          placeholder="Min"
-                          value={filterMinPrice}
-                          onChange={(e) => setFilterMinPrice(e.target.value)}
-                          className="h-8 text-sm"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <Label className="text-xs">Max Price</Label>
-                        <Input
-                          type="number"
-                          placeholder="Max"
-                          value={filterMaxPrice}
-                          onChange={(e) => setFilterMaxPrice(e.target.value)}
-                          className="h-8 text-sm"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <Label className="text-xs">Min Beds</Label>
-                        <Input
-                          type="number"
-                          placeholder="Min"
-                          value={filterMinBeds}
-                          onChange={(e) => setFilterMinBeds(e.target.value)}
-                          className="h-8 text-sm"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <Label className="text-xs">Min Baths</Label>
-                        <Input
-                          type="number"
-                          step="0.5"
-                          placeholder="Min"
-                          value={filterMinBaths}
-                          onChange={(e) => setFilterMinBaths(e.target.value)}
-                          className="h-8 text-sm"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <Separator />
+                  <Separator className="my-1.5" />
 
                   {/* Analytics Filters - Compact */}
-                  <div className="space-y-2">
-                    <Label className="text-xs font-semibold text-muted-foreground">
+                  <div className="space-y-1">
+                    <Label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
                       ANALYTICS FILTERS
                     </Label>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-xs">Monthly Cashflow</Label>
-                        <span className="text-xs text-muted-foreground">
+                    <div className="space-y-1 w-full lg:w-[400px]">
+                      <div className="space-y-0.5">
+                        <Label className="text-[11px]">Monthly Cashflow</Label>
+                        <div className="text-[11px] text-muted-foreground">
                           {new Intl.NumberFormat("en-US", {
                             style: "currency",
                             currency: "USD",
@@ -1033,7 +876,7 @@ export default function MarketListingsPage() {
                             minimumFractionDigits: 0,
                             maximumFractionDigits: 0,
                           }).format(filterCashflowRange[1])}
-                        </span>
+                        </div>
                       </div>
                       <Slider
                         min={0}
@@ -1047,6 +890,150 @@ export default function MarketListingsPage() {
                       />
                     </div>
                   </div>
+
+                  <Separator className="my-1.5" />
+
+                  {/* Property Filters - Sub Accordion */}
+                  <Accordion type="single" collapsible>
+                    <AccordionItem
+                      value="property-filters"
+                      className="border-0"
+                    >
+                      <AccordionTrigger className="py-1 hover:no-underline">
+                        <Label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide cursor-pointer">
+                          PROPERTY FILTERS
+                        </Label>
+                      </AccordionTrigger>
+                      <AccordionContent className="pt-1">
+                        <div className="space-y-1.5">
+                          <div className="grid grid-cols-4 gap-1.5">
+                            <div className="space-y-0.5">
+                              <Label className="text-[11px]">Source</Label>
+                              <Select
+                                value={filterSource}
+                                onValueChange={setFilterSource}
+                              >
+                                <SelectTrigger className="h-7 text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="all">All</SelectItem>
+                                  {getUniqueValues("source").map((source) => (
+                                    <SelectItem
+                                      key={source as string}
+                                      value={source as string}
+                                    >
+                                      {source as string}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div className="space-y-0.5">
+                              <Label className="text-[11px]">Type</Label>
+                              <Select
+                                value={filterPropertyType}
+                                onValueChange={setFilterPropertyType}
+                              >
+                                <SelectTrigger className="h-7 text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="all">All</SelectItem>
+                                  {getUniqueValues("propertyType").map(
+                                    (type) => (
+                                      <SelectItem
+                                        key={type as string}
+                                        value={type as string}
+                                      >
+                                        {type as string}
+                                      </SelectItem>
+                                    )
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div className="space-y-0.5">
+                              <Label className="text-[11px]">City</Label>
+                              <Input
+                                placeholder="City"
+                                value={filterCity}
+                                onChange={(e) => setFilterCity(e.target.value)}
+                                className="h-7 text-xs"
+                              />
+                            </div>
+
+                            <div className="space-y-0.5">
+                              <Label className="text-[11px]">State</Label>
+                              <Input
+                                placeholder="State"
+                                value={filterState}
+                                onChange={(e) => setFilterState(e.target.value)}
+                                className="h-7 text-xs"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-4 gap-1.5">
+                            <div className="space-y-0.5">
+                              <Label className="text-[11px]">Min Price</Label>
+                              <Input
+                                type="number"
+                                placeholder="Min"
+                                value={filterMinPrice}
+                                onChange={(e) =>
+                                  setFilterMinPrice(e.target.value)
+                                }
+                                className="h-7 text-xs"
+                              />
+                            </div>
+
+                            <div className="space-y-0.5">
+                              <Label className="text-[11px]">Max Price</Label>
+                              <Input
+                                type="number"
+                                placeholder="Max"
+                                value={filterMaxPrice}
+                                onChange={(e) =>
+                                  setFilterMaxPrice(e.target.value)
+                                }
+                                className="h-7 text-xs"
+                              />
+                            </div>
+
+                            <div className="space-y-0.5">
+                              <Label className="text-[11px]">Min Beds</Label>
+                              <Input
+                                type="number"
+                                placeholder="Min"
+                                value={filterMinBeds}
+                                onChange={(e) =>
+                                  setFilterMinBeds(e.target.value)
+                                }
+                                className="h-7 text-xs"
+                              />
+                            </div>
+
+                            <div className="space-y-0.5">
+                              <Label className="text-[11px]">Min Baths</Label>
+                              <Input
+                                type="number"
+                                step="0.5"
+                                placeholder="Min"
+                                value={filterMinBaths}
+                                onChange={(e) =>
+                                  setFilterMinBaths(e.target.value)
+                                }
+                                className="h-7 text-xs"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
                 </div>
               </AccordionContent>
             </AccordionItem>
@@ -1104,7 +1091,6 @@ export default function MarketListingsPage() {
                 </p>
                 {(filterSource !== "all" ||
                   filterPropertyType !== "all" ||
-                  filterStatus !== "all" ||
                   filterMinPrice ||
                   filterMaxPrice ||
                   showInterestedOnly) && (
@@ -1268,6 +1254,14 @@ export default function MarketListingsPage() {
                                 }}
                               >
                                 {listing.source}
+                              </Badge>
+                            )}
+                            {listing.propertyType && (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] h-4 px-1.5 shrink-0"
+                              >
+                                {listing.propertyType}
                               </Badge>
                             )}
                             <div className="text-xs font-medium leading-tight truncate">
