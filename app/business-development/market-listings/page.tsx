@@ -116,7 +116,15 @@ export default function MarketListingsPage() {
     | "bedrooms"
     | "bathrooms"
     | "squareFeet"
-    | "daysOnMarket";
+    | "daysOnMarket"
+    | "calculatedExpectedRent"
+    | "calculatedMonthlyCashflow"
+    | "calculatedCapRate"
+    | "calculatedCashOnCash"
+    | "calculatedPriceToRent"
+    | "calculatedDSCR"
+    | "calculatedBreakEvenRatio"
+    | "calculatedOER";
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
@@ -419,6 +427,38 @@ export default function MarketListingsPage() {
           case "daysOnMarket":
             aVal = a.daysOnMarket || 0;
             bVal = b.daysOnMarket || 0;
+            break;
+          case "calculatedExpectedRent":
+            aVal = a.calculatedExpectedRent || 0;
+            bVal = b.calculatedExpectedRent || 0;
+            break;
+          case "calculatedMonthlyCashflow":
+            aVal = a.calculatedMonthlyCashflow || 0;
+            bVal = b.calculatedMonthlyCashflow || 0;
+            break;
+          case "calculatedCapRate":
+            aVal = a.calculatedCapRate || 0;
+            bVal = b.calculatedCapRate || 0;
+            break;
+          case "calculatedCashOnCash":
+            aVal = a.calculatedCashOnCash || 0;
+            bVal = b.calculatedCashOnCash || 0;
+            break;
+          case "calculatedPriceToRent":
+            aVal = a.calculatedPriceToRent || 0;
+            bVal = b.calculatedPriceToRent || 0;
+            break;
+          case "calculatedDSCR":
+            aVal = a.calculatedDSCR || 0;
+            bVal = b.calculatedDSCR || 0;
+            break;
+          case "calculatedBreakEvenRatio":
+            aVal = a.calculatedBreakEvenRatio || 0;
+            bVal = b.calculatedBreakEvenRatio || 0;
+            break;
+          case "calculatedOER":
+            aVal = a.calculatedOER || 0;
+            bVal = b.calculatedOER || 0;
             break;
           default:
             return 0;
@@ -1084,8 +1124,13 @@ export default function MarketListingsPage() {
                         <div className="text-xs">DOM</div>
                       </TableHead>
                       {/* Analysis Sections */}
-                      <TableHead className="text-right p-2 w-20 bg-blue-50 dark:bg-blue-950/20">
-                        <div className="text-xs">Rent</div>
+                      <TableHead
+                        className="text-right p-2 w-20 bg-blue-50 dark:bg-blue-950/20 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-900/30"
+                        onClick={() => handleSort("calculatedExpectedRent")}
+                      >
+                        <div className="flex items-center justify-end text-xs">
+                          Rent {getSortIcon("calculatedExpectedRent")}
+                        </div>
                       </TableHead>
                       <TableHead className="text-center p-2 w-12 bg-purple-50 dark:bg-purple-950/20">
                         <div className="text-xs">1%</div>
@@ -1096,26 +1141,61 @@ export default function MarketListingsPage() {
                       <TableHead className="text-center p-2 w-12 bg-purple-50 dark:bg-purple-950/20">
                         <div className="text-xs">50%</div>
                       </TableHead>
-                      <TableHead className="text-right p-2 w-20 bg-green-50 dark:bg-green-950/20">
-                        <div className="text-xs">CF/mo</div>
+                      <TableHead
+                        className="text-right p-2 w-20 bg-green-50 dark:bg-green-950/20 cursor-pointer hover:bg-green-100 dark:hover:bg-green-900/30"
+                        onClick={() => handleSort("calculatedMonthlyCashflow")}
+                      >
+                        <div className="flex items-center justify-end text-xs">
+                          CF/mo {getSortIcon("calculatedMonthlyCashflow")}
+                        </div>
                       </TableHead>
-                      <TableHead className="text-right p-2 w-16 bg-green-50 dark:bg-green-950/20">
-                        <div className="text-xs">Cap%</div>
+                      <TableHead
+                        className="text-right p-2 w-16 bg-green-50 dark:bg-green-950/20 cursor-pointer hover:bg-green-100 dark:hover:bg-green-900/30"
+                        onClick={() => handleSort("calculatedCapRate")}
+                      >
+                        <div className="flex items-center justify-end text-xs">
+                          Cap% {getSortIcon("calculatedCapRate")}
+                        </div>
                       </TableHead>
-                      <TableHead className="text-right p-2 w-16 bg-green-50 dark:bg-green-950/20">
-                        <div className="text-xs">CoC%</div>
+                      <TableHead
+                        className="text-right p-2 w-16 bg-green-50 dark:bg-green-950/20 cursor-pointer hover:bg-green-100 dark:hover:bg-green-900/30"
+                        onClick={() => handleSort("calculatedCashOnCash")}
+                      >
+                        <div className="flex items-center justify-end text-xs">
+                          CoC% {getSortIcon("calculatedCashOnCash")}
+                        </div>
                       </TableHead>
-                      <TableHead className="text-right p-2 w-16 bg-green-50 dark:bg-green-950/20">
-                        <div className="text-xs">P/R</div>
+                      <TableHead
+                        className="text-right p-2 w-16 bg-green-50 dark:bg-green-950/20 cursor-pointer hover:bg-green-100 dark:hover:bg-green-900/30"
+                        onClick={() => handleSort("calculatedPriceToRent")}
+                      >
+                        <div className="flex items-center justify-end text-xs">
+                          P/R {getSortIcon("calculatedPriceToRent")}
+                        </div>
                       </TableHead>
-                      <TableHead className="text-right p-2 w-16 bg-green-50 dark:bg-green-950/20">
-                        <div className="text-xs">DSCR</div>
+                      <TableHead
+                        className="text-right p-2 w-16 bg-green-50 dark:bg-green-950/20 cursor-pointer hover:bg-green-100 dark:hover:bg-green-900/30"
+                        onClick={() => handleSort("calculatedDSCR")}
+                      >
+                        <div className="flex items-center justify-end text-xs">
+                          DSCR {getSortIcon("calculatedDSCR")}
+                        </div>
                       </TableHead>
-                      <TableHead className="text-right p-2 w-16 bg-green-50 dark:bg-green-950/20">
-                        <div className="text-xs">BER%</div>
+                      <TableHead
+                        className="text-right p-2 w-16 bg-green-50 dark:bg-green-950/20 cursor-pointer hover:bg-green-100 dark:hover:bg-green-900/30"
+                        onClick={() => handleSort("calculatedBreakEvenRatio")}
+                      >
+                        <div className="flex items-center justify-end text-xs">
+                          BER% {getSortIcon("calculatedBreakEvenRatio")}
+                        </div>
                       </TableHead>
-                      <TableHead className="text-right p-2 w-16 bg-green-50 dark:bg-green-950/20">
-                        <div className="text-xs">OER%</div>
+                      <TableHead
+                        className="text-right p-2 w-16 bg-green-50 dark:bg-green-950/20 cursor-pointer hover:bg-green-100 dark:hover:bg-green-900/30"
+                        onClick={() => handleSort("calculatedOER")}
+                      >
+                        <div className="flex items-center justify-end text-xs">
+                          OER% {getSortIcon("calculatedOER")}
+                        </div>
                       </TableHead>
                     </TableRow>
                   </TableHeader>
@@ -1405,7 +1485,7 @@ export default function MarketListingsPage() {
 
       {/* Details Dialog */}
       <Dialog open={showDetails} onOpenChange={setShowDetails}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="min-w-3xl max-w-3xl max-h-[90vh] overflow-y-auto">
           {selectedListing && (
             <>
               <DialogHeader>
