@@ -125,8 +125,10 @@ export default function MarketListingsPage() {
     | "calculatedDSCR"
     | "calculatedBreakEvenRatio"
     | "calculatedOER";
-  const [sortField, setSortField] = useState<SortField | null>(null);
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [sortField, setSortField] = useState<SortField | null>(
+    "calculatedMonthlyCashflow"
+  );
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
   // Search state
   const [searchQuery, setSearchQuery] = useState<string>("");
