@@ -135,11 +135,18 @@ export default function MarketListingsPage() {
   // Financing strategy state
   const [financingStrategy, setFinancingStrategy] = useState<FinancingStrategy>(
     {
+      downPaymentType: "percent",
       downPaymentPercent: 20,
+      downPaymentAmount: 100000,
       interestRate: 6,
       loanTermYears: 30,
     }
   );
+  // Local state for input values to avoid update lag
+  const [downPaymentPercentInput, setDownPaymentPercentInput] = useState("20");
+  const [downPaymentAmountInput, setDownPaymentAmountInput] =
+    useState("100000");
+  const [interestRateInput, setInterestRateInput] = useState("6");
   const [loadingExpectedRents, setLoadingExpectedRents] = useState(false);
 
   useEffect(() => {
@@ -539,6 +546,22 @@ export default function MarketListingsPage() {
     }).format(value);
   };
 
+  // Helper function to calculate down payment amount and percentage
+  const getDownPaymentInfo = (price: number) => {
+    if (
+      financingStrategy.downPaymentType === "amount" &&
+      financingStrategy.downPaymentAmount !== undefined
+    ) {
+      const amount = financingStrategy.downPaymentAmount;
+      const percent = (amount / price) * 100;
+      return { amount, percent };
+    } else {
+      const percent = financingStrategy.downPaymentPercent;
+      const amount = price * (percent / 100);
+      return { amount, percent };
+    }
+  };
+
   // Helper function to get color-coded badge variant and className
   const getCashflowColor = (cashflow?: number) => {
     if (cashflow === undefined)
@@ -786,45 +809,86 @@ export default function MarketListingsPage() {
                       FINANCING STRATEGY
                     </Label>
                     <div className="grid grid-cols-3 gap-1.5">
-                      <div className="space-y-0.5">
-                        <Label htmlFor="downPayment" className="text-[11px]">
-                          Down Payment (%)
-                        </Label>
-                        <Input
-                          id="downPayment"
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={financingStrategy.downPaymentPercent}
-                          onChange={(e) =>
-                            setFinancingStrategy({
-                              ...financingStrategy,
-                              downPaymentPercent:
-                                parseFloat(e.target.value) || 0,
-                            })
-                          }
-                          className="h-7 text-xs"
-                        />
-                      </div>
-                      <div className="space-y-0.5">
-                        <Label htmlFor="interestRate" className="text-[11px]">
-                          Interest Rate (%)
-                        </Label>
-                        <Input
-                          id="interestRate"
-                          type="number"
-                          min="0"
-                          max="20"
-                          step="0.1"
-                          value={financingStrategy.interestRate}
-                          onChange={(e) =>
-                            setFinancingStrategy({
-                              ...financingStrategy,
-                              interestRate: parseFloat(e.target.value) || 0,
-                            })
-                          }
-                          className="h-7 text-xs"
-                        />
+                      <div className="space-y-0.5 col-span-2">
+                        <div className="flex items-center gap-1">
+                          <Label
+                            htmlFor="downPaymentType"
+                            className="text-[11px]"
+                          >
+                            Down Payment
+                          </Label>
+                          <Select
+                            value={financingStrategy.downPaymentType}
+                            onValueChange={(value: "percent" | "amount") => {
+                              setFinancingStrategy({
+                                ...financingStrategy,
+                                downPaymentType: value,
+                              });
+                              // Sync input values when switching modes
+                              if (value === "percent") {
+                                setDownPaymentPercentInput(
+                                  financingStrategy.downPaymentPercent.toString()
+                                );
+                              } else {
+                                setDownPaymentAmountInput(
+                                  financingStrategy.downPaymentAmount?.toString() ||
+                                    ""
+                                );
+                              }
+                            }}
+                          >
+                            <SelectTrigger
+                              id="downPaymentType"
+                              className="h-5 text-[10px] w-16 ml-auto"
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="percent">%</SelectItem>
+                              <SelectItem value="amount">$</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {financingStrategy.downPaymentType === "percent" ? (
+                          <Input
+                            id="downPayment"
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={downPaymentPercentInput}
+                            onChange={(e) =>
+                              setDownPaymentPercentInput(e.target.value)
+                            }
+                            onBlur={(e) =>
+                              setFinancingStrategy({
+                                ...financingStrategy,
+                                downPaymentPercent:
+                                  parseFloat(e.target.value) || 0,
+                              })
+                            }
+                            className="h-7 text-xs"
+                            placeholder="%"
+                          />
+                        ) : (
+                          <Input
+                            id="downPaymentAmount"
+                            type="number"
+                            min="0"
+                            value={downPaymentAmountInput}
+                            onChange={(e) =>
+                              setDownPaymentAmountInput(e.target.value)
+                            }
+                            onBlur={(e) =>
+                              setFinancingStrategy({
+                                ...financingStrategy,
+                                downPaymentAmount:
+                                  parseFloat(e.target.value) || undefined,
+                              })
+                            }
+                            className="h-7 text-xs"
+                            placeholder="$"
+                          />
+                        )}
                       </div>
                       <div className="space-y-0.5">
                         <Label htmlFor="loanTerm" className="text-[11px]">
@@ -849,6 +913,27 @@ export default function MarketListingsPage() {
                           </SelectContent>
                         </Select>
                       </div>
+                    </div>
+                    <div className="space-y-0.5">
+                      <Label htmlFor="interestRate" className="text-[11px]">
+                        Interest Rate (%)
+                      </Label>
+                      <Input
+                        id="interestRate"
+                        type="number"
+                        min="0"
+                        max="20"
+                        step="0.1"
+                        value={interestRateInput}
+                        onChange={(e) => setInterestRateInput(e.target.value)}
+                        onBlur={(e) =>
+                          setFinancingStrategy({
+                            ...financingStrategy,
+                            interestRate: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                        className="h-7 text-xs"
+                      />
                     </div>
                   </div>
 
@@ -1124,8 +1209,8 @@ export default function MarketListingsPage() {
                           Price {getSortIcon("price")}
                         </div>
                       </TableHead>
-                      <TableHead className="text-right p-2 w-20">
-                        <div className="text-xs">Down</div>
+                      <TableHead className="text-right p-2 w-24">
+                        <div className="text-xs">Down / %</div>
                       </TableHead>
                       <TableHead className="text-center p-2 w-12">
                         <div className="text-xs">Bd/Ba</div>
@@ -1282,10 +1367,21 @@ export default function MarketListingsPage() {
                         </TableCell>
                         <TableCell className="text-right p-2">
                           <div className="text-xs text-muted-foreground">
-                            {formatCurrency(
-                              (listing.price || 0) *
-                                (financingStrategy.downPaymentPercent / 100)
-                            )}
+                            {(() => {
+                              const { amount, percent } = getDownPaymentInfo(
+                                listing.price || 0
+                              );
+                              return (
+                                <>
+                                  <div className="font-medium">
+                                    {formatCurrency(amount)}
+                                  </div>
+                                  <div className="text-[10px]">
+                                    ({percent.toFixed(1)}%)
+                                  </div>
+                                </>
+                              );
+                            })()}
                           </div>
                         </TableCell>
                         <TableCell className="text-center p-2">
@@ -1312,10 +1408,7 @@ export default function MarketListingsPage() {
                         <TableCell className="text-right p-2 bg-blue-50 dark:bg-blue-950/20">
                           {listing.calculatedExpectedRent ? (
                             <div className="text-xs font-medium">
-                              {(listing.calculatedExpectedRent / 1000).toFixed(
-                                1
-                              )}
-                              k
+                              {formatCurrency(listing.calculatedExpectedRent)}
                             </div>
                           ) : (
                             <span className="text-muted-foreground text-xs">

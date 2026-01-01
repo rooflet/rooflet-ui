@@ -3,7 +3,9 @@
  */
 
 export interface FinancingStrategy {
+  downPaymentType: "percent" | "amount"; // Whether to use percentage or dollar amount
   downPaymentPercent: number; // Percentage (e.g., 20 for 20%)
+  downPaymentAmount?: number; // Dollar amount (e.g., 50000)
   interestRate: number; // Annual interest rate percentage (e.g., 6 for 6%)
   loanTermYears: number; // Loan term in years (e.g., 30)
 }
@@ -95,8 +97,16 @@ export function calculateInvestmentMetrics(
   monthlyPropertyTax: number = 0,
   monthlyInsurance: number = 0
 ): PropertyInvestmentMetrics {
-  // Calculate down payment and loan amount
-  const downPayment = purchasePrice * (financing.downPaymentPercent / 100);
+  // Calculate down payment and loan amount based on financing type
+  let downPayment: number;
+  if (
+    financing.downPaymentType === "amount" &&
+    financing.downPaymentAmount !== undefined
+  ) {
+    downPayment = financing.downPaymentAmount;
+  } else {
+    downPayment = purchasePrice * (financing.downPaymentPercent / 100);
+  }
   const loanAmount = purchasePrice - downPayment;
 
   // Calculate monthly mortgage payment
