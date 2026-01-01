@@ -699,6 +699,31 @@ export default function MarketListingsPage() {
     });
   };
 
+  const formatTimeAgo = (dateString?: string) => {
+    if (!dateString) return "N/A";
+    const now = new Date();
+    const date = new Date(dateString);
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    const intervals = [
+      { label: "year", seconds: 31536000 },
+      { label: "month", seconds: 2592000 },
+      { label: "week", seconds: 604800 },
+      { label: "day", seconds: 86400 },
+      { label: "hour", seconds: 3600 },
+      { label: "minute", seconds: 60 },
+    ];
+
+    for (const interval of intervals) {
+      const count = Math.floor(seconds / interval.seconds);
+      if (count >= 1) {
+        return `${count} ${interval.label}${count !== 1 ? "s" : ""} ago`;
+      }
+    }
+
+    return "just now";
+  };
+
   const getUniqueValues = (key: keyof MarketListingWithPreferenceResponse) => {
     const values = new Set(
       listings.map((l) => l[key]).filter((v) => v !== null && v !== undefined)
@@ -1249,6 +1274,9 @@ export default function MarketListingsPage() {
                           </div>
                           <div className="text-xs text-muted-foreground leading-tight">
                             {listing.city}, {listing.state} {listing.zipCode}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground/70 leading-tight mt-0.5">
+                            Updated {formatTimeAgo(listing.updatedAt)}
                           </div>
                         </TableCell>
                         <TableCell className="text-right p-2">
