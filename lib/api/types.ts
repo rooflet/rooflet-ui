@@ -455,3 +455,8 @@ export interface ExpectedRentResponse {
   createdAt: string; // format: date-time
   updatedAt: string; // format: date-time
 }
+
+export interface ExpectedRentByZipResponse {
+  zipCode: string;
+  rentByBedroom: ExpectedRentResponse[];
+}

@@ -38,7 +38,10 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { marketListingsApi } from "@/lib/api/market-listings";
-import type { MarketListingWithPreferenceResponse } from "@/lib/api/types";
+import type {
+  ExpectedRentResponse,
+  MarketListingWithPreferenceResponse,
+} from "@/lib/api/types";
 import {
   calculateInvestmentMetrics,
   estimateMonthlyPropertyTax,
@@ -174,88 +177,112 @@ export default function MarketListingsPage() {
     listingsData: MarketListingWithPreferenceResponse[]
   ) => {
     setLoadingExpectedRents(true);
-    const updatedListings = await Promise.all(
-      listingsData.map(async (listing) => {
-        if (!listing.zipCode || !listing.bedrooms || !listing.price) {
-          return listing;
-        }
 
+    // Get unique zip codes
+    const uniqueZipCodes = Array.from(
+      new Set(
+        listingsData
+          .filter((listing) => listing.zipCode)
+          .map((listing) => listing.zipCode!)
+      )
+    );
+
+    // Fetch expected rent data for each unique zip code once
+    const zipCodeDataMap = new Map<string, ExpectedRentResponse[]>();
+    await Promise.all(
+      uniqueZipCodes.map(async (zipCode) => {
         try {
-          const expectedRentData = await marketListingsApi.getExpectedRent(
-            listing.zipCode,
-            listing.bedrooms
-          );
-
-          if (!expectedRentData) {
-            return listing;
+          const data = await marketListingsApi.getExpectedRent(zipCode);
+          if (data) {
+            zipCodeDataMap.set(zipCode, data);
           }
-
-          // Calculate investment metrics
-          const metrics = calculateInvestmentMetrics(
-            listing.price,
-            expectedRentData.expectedRent,
-            financingStrategy,
-            listing.hoaFee || 0,
-            estimateMonthlyPropertyTax(listing.price, listing.state),
-            estimateMonthlyInsurance(listing.price)
-          );
-
-          // Calculate additional rules of thumb
-          const meets2Percent = meets2PercentRule(
-            expectedRentData.expectedRent,
-            listing.price
-          );
-          const meets50Percent = meets50PercentRule(
-            expectedRentData.expectedRent,
-            metrics.monthlyMortgagePayment
-          );
-          const priceToRent = calculatePriceToRentRatio(
-            listing.price,
-            expectedRentData.expectedRent
-          );
-          const capRate = calculateCapRate(
-            listing.price,
-            expectedRentData.expectedRent
-          );
-          const dscr = calculateDSCR(
-            expectedRentData.expectedRent,
-            metrics.monthlyMortgagePayment
-          );
-          const breakEvenRatio = calculateBreakEvenRatio(
-            expectedRentData.expectedRent,
-            metrics.monthlyMortgagePayment
-          );
-          const oer = calculateOperatingExpenseRatio(
-            expectedRentData.expectedRent
-          );
-
-          return {
-            ...listing,
-            calculatedExpectedRent: expectedRentData.expectedRent,
-            calculatedMonthlyPayment: metrics.monthlyMortgagePayment,
-            calculatedCashOnCash: metrics.cashOnCashReturn,
-            calculatedMeets1Percent: metrics.meets1PercentRule,
-            calculatedMeets2Percent: meets2Percent,
-            calculatedMeets50Percent: meets50Percent,
-            calculatedPriceToRent: priceToRent,
-            calculatedCapRate: capRate,
-            calculatedMonthlyCashflow: metrics.monthlyNetIncome,
-            calculatedTotalMonthlyExpenses: metrics.totalMonthlyExpenses,
-            calculatedMonthlyPropertyTax: metrics.monthlyPropertyTax,
-            calculatedMonthlyInsurance: metrics.monthlyInsurance,
-            calculatedDSCR: dscr,
-            calculatedBreakEvenRatio: breakEvenRatio,
-            calculatedOER: oer,
-          };
         } catch (error) {
-          console.error(
-            `Failed to load expected rent for listing ${listing.id}:`,
-            error
-          );
-          return listing;
+          console.warn(`Failed to fetch expected rent for ${zipCode}`);
         }
       })
     );
+
+    // Apply expected rent data to all listings
+    const updatedListings = listingsData.map((listing) => {
+      if (!listing.zipCode || !listing.bedrooms || !listing.price) {
+        return listing;
+      }
+
+      const rentDataArray = zipCodeDataMap.get(listing.zipCode);
+      if (!rentDataArray) {
+        return listing;
+      }
+
+      try {
+        // Find the expected rent for this specific bedroom count
+        const expectedRentData = rentDataArray.find(
+          (data) => data.bedrooms === listing.bedrooms
+        );
+
+        if (!expectedRentData) {
+          return listing;
+        }
+
+        const expectedRent = expectedRentData.expectedRent;
+
+        // Calculate investment metrics
+        const metrics = calculateInvestmentMetrics(
+          listing.price,
+          expectedRent,
+          financingStrategy,
+          listing.hoaFee || 0,
+          estimateMonthlyPropertyTax(listing.price, listing.state),
+          estimateMonthlyInsurance(listing.price)
+        );
+
+        // Calculate additional rules of thumb
+        const meets2Percent = meets2PercentRule(expectedRent, listing.price);
+        const meets50Percent = meets50PercentRule(
+          expectedRent,
+          metrics.monthlyMortgagePayment
+        );
+        const priceToRent = calculatePriceToRentRatio(
+          listing.price,
+          expectedRent
+        );
+        const capRate = calculateCapRate(listing.price, expectedRent);
+        const dscr = calculateDSCR(
+          expectedRent,
+          metrics.monthlyMortgagePayment
+        );
+        const breakEvenRatio = calculateBreakEvenRatio(
+          expectedRent,
+          metrics.monthlyMortgagePayment
+        );
+        const oer = calculateOperatingExpenseRatio(expectedRent);
+
+        return {
+          ...listing,
+          calculatedExpectedRent: expectedRent,
+          calculatedMonthlyPayment: metrics.monthlyMortgagePayment,
+          calculatedCashOnCash: metrics.cashOnCashReturn,
+          calculatedMeets1Percent: metrics.meets1PercentRule,
+          calculatedMeets2Percent: meets2Percent,
+          calculatedMeets50Percent: meets50Percent,
+          calculatedPriceToRent: priceToRent,
+          calculatedCapRate: capRate,
+          calculatedMonthlyCashflow: metrics.monthlyNetIncome,
+          calculatedTotalMonthlyExpenses: metrics.totalMonthlyExpenses,
+          calculatedMonthlyPropertyTax: metrics.monthlyPropertyTax,
+          calculatedMonthlyInsurance: metrics.monthlyInsurance,
+          calculatedDSCR: dscr,
+          calculatedBreakEvenRatio: breakEvenRatio,
+          calculatedOER: oer,
+        };
+      } catch (error) {
+        console.error(
+          `Failed to calculate metrics for listing ${listing.id}:`,
+          error
+        );
+        return listing;
+      }
+    });
+
     setListings(updatedListings);
     setLoadingExpectedRents(false);
   };
