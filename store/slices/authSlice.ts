@@ -1,5 +1,10 @@
 import { api } from "@/lib/api-client";
-import type { LoginResponse, UserResponse } from "@/lib/api/types";
+import type {
+  LoginResponse,
+  UserResponse,
+  ZipCodePreferenceResponse,
+} from "@/lib/api/types";
+import { zipCodePreferencesApi } from "@/lib/api/zip-code-preferences";
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 
 export interface AuthState {
@@ -7,6 +12,8 @@ export interface AuthState {
   user: UserResponse | null;
   isLoading: boolean;
   error: string | null;
+  zipCodePreferences: ZipCodePreferenceResponse[];
+  zipCodePreferencesLoading: boolean;
 }
 
 const initialState: AuthState = {
@@ -14,6 +21,8 @@ const initialState: AuthState = {
   user: null,
   isLoading: false,
   error: null,
+  zipCodePreferences: [],
+  zipCodePreferencesLoading: false,
 };
 
 export const login = createAsyncThunk(
@@ -62,6 +71,54 @@ export const checkAuth = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(
         error instanceof Error ? error.message : "Auth check failed"
+      );
+    }
+  }
+);
+
+export const fetchZipCodePreferences = createAsyncThunk(
+  "auth/fetchZipCodePreferences",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await zipCodePreferencesApi.getAll();
+      return response;
+    } catch (error) {
+      return rejectWithValue(
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch zip code preferences"
+      );
+    }
+  }
+);
+
+export const addZipCodePreference = createAsyncThunk(
+  "auth/addZipCodePreference",
+  async (zipCode: string, { rejectWithValue }) => {
+    try {
+      const response = await zipCodePreferencesApi.add({ zipCode });
+      return response;
+    } catch (error) {
+      return rejectWithValue(
+        error instanceof Error
+          ? error.message
+          : "Failed to add zip code preference"
+      );
+    }
+  }
+);
+
+export const deleteZipCodePreference = createAsyncThunk(
+  "auth/deleteZipCodePreference",
+  async (zipCode: string, { rejectWithValue }) => {
+    try {
+      await zipCodePreferencesApi.delete(zipCode);
+      return zipCode;
+    } catch (error) {
+      return rejectWithValue(
+        error instanceof Error
+          ? error.message
+          : "Failed to delete zip code preference"
       );
     }
   }
@@ -118,6 +175,41 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.isAuthenticated = false;
         state.user = null;
+      })
+      // Fetch Zip Code Preferences
+      .addCase(fetchZipCodePreferences.pending, (state) => {
+        state.zipCodePreferencesLoading = true;
+      })
+      .addCase(fetchZipCodePreferences.fulfilled, (state, action) => {
+        state.zipCodePreferencesLoading = false;
+        state.zipCodePreferences = action.payload;
+      })
+      .addCase(fetchZipCodePreferences.rejected, (state) => {
+        state.zipCodePreferencesLoading = false;
+      })
+      // Add Zip Code Preference
+      .addCase(addZipCodePreference.pending, (state) => {
+        state.zipCodePreferencesLoading = true;
+      })
+      .addCase(addZipCodePreference.fulfilled, (state, action) => {
+        state.zipCodePreferencesLoading = false;
+        state.zipCodePreferences.push(action.payload);
+      })
+      .addCase(addZipCodePreference.rejected, (state) => {
+        state.zipCodePreferencesLoading = false;
+      })
+      // Delete Zip Code Preference
+      .addCase(deleteZipCodePreference.pending, (state) => {
+        state.zipCodePreferencesLoading = true;
+      })
+      .addCase(deleteZipCodePreference.fulfilled, (state, action) => {
+        state.zipCodePreferencesLoading = false;
+        state.zipCodePreferences = state.zipCodePreferences.filter(
+          (pref) => pref.zipCode !== action.payload
+        );
+      })
+      .addCase(deleteZipCodePreference.rejected, (state) => {
+        state.zipCodePreferencesLoading = false;
       });
   },
 });

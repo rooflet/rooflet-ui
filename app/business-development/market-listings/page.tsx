@@ -815,17 +815,15 @@ export default function MarketListingsPage() {
                     <Filter className="h-4 w-4" />
                     <span className="font-semibold">Filters & Financing</span>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
+                  <span
                     onClick={(e) => {
                       e.stopPropagation();
                       clearFilters();
                     }}
-                    className="h-7 text-xs"
+                    className="h-7 text-xs px-3 py-1.5 rounded-md hover:bg-accent hover:text-accent-foreground cursor-pointer inline-flex items-center justify-center"
                   >
                     Clear All
-                  </Button>
+                  </span>
                 </div>
               </AccordionTrigger>
               <AccordionContent className="px-4 pb-2">

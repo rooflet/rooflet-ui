@@ -18,16 +18,38 @@ import type {
   UpdatePasswordRequest,
   UpdateUserRequest,
   UserResponse,
+  AvailableZipCodeResponse,
 } from "@/lib/api/types";
 import {
   getCurrentUserFromApi,
   updateCurrentUser,
   updateCurrentUserPassword,
 } from "@/lib/api/users";
-import { Loader2 } from "lucide-react";
+import { Loader2, X, Plus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import {
+  fetchZipCodePreferences,
+  addZipCodePreference,
+  deleteZipCodePreference,
+} from "@/store/slices/authSlice";
+import {
+  zipCodePreferencesApi,
+  MAX_ZIP_CODES,
+} from "@/lib/api/zip-code-preferences";
+import { validateZipCode, isDuplicateZipCode } from "@/lib/zip-validation";
 
 export default function SettingsPage() {
   const { toast } = useToast();
+  const dispatch = useAppDispatch();
+
   const [user, setUser] = useState<UserResponse | null>(null);
   const [profile, setProfile] = useState({
     fullName: "",
@@ -41,6 +63,20 @@ export default function SettingsPage() {
     confirmPassword: "",
   });
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+
+  // Zip Code Preferences state
+  const zipCodePreferences = useAppSelector(
+    (state) => state.auth.zipCodePreferences || []
+  );
+  const zipCodePreferencesLoading = useAppSelector(
+    (state) => state.auth.zipCodePreferencesLoading
+  );
+  const [availableZipCodes, setAvailableZipCodes] = useState<
+    AvailableZipCodeResponse[]
+  >([]);
+  const [isLoadingAvailableZipCodes, setIsLoadingAvailableZipCodes] =
+    useState(false);
+  const [selectedZipCode, setSelectedZipCode] = useState<string>("");
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -63,8 +99,30 @@ export default function SettingsPage() {
       }
     };
 
+    const fetchZipCodes = async () => {
+      // Fetch user's zip code preferences
+      dispatch(fetchZipCodePreferences());
+
+      // Fetch available zip codes
+      setIsLoadingAvailableZipCodes(true);
+      try {
+        const available = await zipCodePreferencesApi.getAvailable();
+        setAvailableZipCodes(available);
+      } catch (error) {
+        console.error("Failed to fetch available zip codes:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load available zip codes",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoadingAvailableZipCodes(false);
+      }
+    };
+
     fetchUser();
-  }, [toast]);
+    fetchZipCodes();
+  }, [toast, dispatch]);
 
   const handleProfileChange = (field: "fullName", value: string) => {
     setProfile((prev) => ({ ...prev, [field]: value }));
@@ -181,6 +239,124 @@ export default function SettingsPage() {
     } finally {
       setIsUpdatingPassword(false);
     }
+  };
+
+  // Zip Code Preference handlers
+  const handleAddZipCode = async () => {
+    if (!selectedZipCode) {
+      toast({
+        title: "Error",
+        description: "Please select a zip code",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate zip code format
+    const validation = validateZipCode(selectedZipCode);
+    if (!validation.isValid) {
+      toast({
+        title: "Error",
+        description: validation.error,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if already added
+    const existingZipCodes = zipCodePreferences.map((pref) => pref.zipCode);
+    if (isDuplicateZipCode(selectedZipCode, existingZipCodes)) {
+      toast({
+        title: "Error",
+        description: "This zip code is already in your preferences",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check limit
+    if (zipCodePreferences.length >= MAX_ZIP_CODES) {
+      toast({
+        title: "Error",
+        description: `You can only add up to ${MAX_ZIP_CODES} zip codes`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await dispatch(addZipCodePreference(validation.formatted!)).unwrap();
+      toast({
+        title: "Success",
+        description: `Zip code ${validation.formatted} added successfully`,
+      });
+      setSelectedZipCode("");
+    } catch (error) {
+      console.error("Failed to add zip code:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add zip code. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteZipCode = async (zipCode: string) => {
+    try {
+      await dispatch(deleteZipCodePreference(zipCode)).unwrap();
+      toast({
+        title: "Success",
+        description: `Zip code ${zipCode} removed`,
+        action: (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleUndoDelete(zipCode)}
+          >
+            Undo
+          </Button>
+        ),
+      });
+    } catch (error) {
+      console.error("Failed to delete zip code:", error);
+      toast({
+        title: "Error",
+        description: "Failed to remove zip code. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUndoDelete = async (zipCode: string) => {
+    try {
+      await dispatch(addZipCodePreference(zipCode)).unwrap();
+      toast({
+        title: "Restored",
+        description: `Zip code ${zipCode} has been restored`,
+      });
+    } catch (error) {
+      console.error("Failed to restore zip code:", error);
+      toast({
+        title: "Error",
+        description: "Failed to restore zip code. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Get available zip codes that are not already added
+  const getFilteredAvailableZipCodes = () => {
+    const existingZipCodes = zipCodePreferences.map((pref) => pref.zipCode);
+    return availableZipCodes.filter(
+      (zipCode) => !existingZipCodes.includes(zipCode.zipCode)
+    );
+  };
+
+  // Sort zip codes alphabetically for display
+  const getSortedZipCodePreferences = () => {
+    return [...zipCodePreferences].sort((a, b) =>
+      a.zipCode.localeCompare(b.zipCode)
+    );
   };
 
   return (
@@ -307,6 +483,122 @@ export default function SettingsPage() {
               )}
               {isUpdatingPassword ? "Updating..." : "Update Password"}
             </Button>
+          </CardContent>
+        </Card>
+
+        {/* Market Preferences */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Market Preferences</CardTitle>
+            <CardDescription>
+              Manage zip codes you have access to view market data for. You can
+              add up to {MAX_ZIP_CODES} zip codes.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Zip Code Counter */}
+            <div className="flex items-center justify-between pb-2">
+              <span className="text-sm text-muted-foreground">
+                {zipCodePreferences.length} / {MAX_ZIP_CODES} zip codes
+              </span>
+              {zipCodePreferences.length >= MAX_ZIP_CODES && (
+                <Badge variant="secondary">Limit Reached</Badge>
+              )}
+            </div>
+
+            {/* Add Zip Code Section */}
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <Select
+                  value={selectedZipCode}
+                  onValueChange={setSelectedZipCode}
+                  disabled={
+                    zipCodePreferencesLoading ||
+                    isLoadingAvailableZipCodes ||
+                    zipCodePreferences.length >= MAX_ZIP_CODES
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a zip code to add" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {isLoadingAvailableZipCodes ? (
+                      <div className="flex items-center justify-center py-4">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span className="ml-2 text-sm">Loading...</span>
+                      </div>
+                    ) : getFilteredAvailableZipCodes().length === 0 ? (
+                      <div className="py-4 text-center text-sm text-muted-foreground">
+                        {zipCodePreferences.length >= MAX_ZIP_CODES
+                          ? "Limit reached"
+                          : "No available zip codes"}
+                      </div>
+                    ) : (
+                      getFilteredAvailableZipCodes().map((zipCode) => (
+                        <SelectItem
+                          key={zipCode.zipCode}
+                          value={zipCode.zipCode}
+                        >
+                          {zipCode.zipCode} ({zipCode.listingCount} listings)
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                onClick={handleAddZipCode}
+                disabled={
+                  !selectedZipCode ||
+                  zipCodePreferencesLoading ||
+                  zipCodePreferences.length >= MAX_ZIP_CODES
+                }
+              >
+                {zipCodePreferencesLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+                <span className="ml-2">Add</span>
+              </Button>
+            </div>
+
+            {/* Display Current Zip Codes */}
+            {zipCodePreferencesLoading && zipCodePreferences.length === 0 ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin" />
+                <span className="ml-2">Loading zip codes...</span>
+              </div>
+            ) : zipCodePreferences.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <p className="text-sm">
+                  Add zip codes to customize your market data access.
+                </p>
+                <p className="text-sm mt-1">
+                  You can add up to {MAX_ZIP_CODES} zip codes.
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {getSortedZipCodePreferences().map((pref) => (
+                  <Badge
+                    key={pref.zipCode}
+                    variant="outline"
+                    className="pl-3 pr-1 py-1 flex items-center gap-2"
+                  >
+                    <span>{pref.zipCode}</span>
+                    <button
+                      onClick={() => handleDeleteZipCode(pref.zipCode)}
+                      disabled={zipCodePreferencesLoading}
+                      className="hover:bg-destructive/20 rounded-sm p-0.5 transition-colors"
+                      aria-label={`Remove zip code ${pref.zipCode}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
