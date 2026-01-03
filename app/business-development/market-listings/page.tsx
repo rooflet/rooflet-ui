@@ -1451,7 +1451,7 @@ export default function MarketListingsPage() {
                         <TableCell className="text-right p-2">
                           <div className="text-xs">
                             {listing.squareFeet
-                              ? (listing.squareFeet / 1000).toFixed(1) + "k"
+                              ? listing.squareFeet.toLocaleString()
                               : "-"}
                           </div>
                         </TableCell>

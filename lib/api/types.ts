@@ -460,3 +460,21 @@ export interface ExpectedRentByZipResponse {
   zipCode: string;
   rentByBedroom: ExpectedRentResponse[];
 }
+
+// User Zip Code Preferences types
+export interface ZipCodePreferenceResponse {
+  userId: string; // format: uuid
+  zipCode: string; // ZIP code
+  createdAt: string; // format: date-time - Creation timestamp
+}
+
+export interface AddZipCodePreferenceRequest {
+  zipCode: string; // required - ZIP code to watch
+}
+
+export interface AvailableZipCodeResponse {
+  zipCode: string; // ZIP code
+  listingCount: number; // format: int64 - Number of active market listings in this zip code
+  expectedRentCount: number; // format: int64 - Number of expected rent records for this zip code
+  isWatched: boolean; // Whether user is currently watching this zip code
+}
