@@ -70,8 +70,6 @@ import {
   type FinancingStrategy,
 } from "@/lib/investment-calculations";
 import { isListingStale, formatTimeAgo } from "@/lib/listing-utils";
-import { isListingStale, formatTimeAgo } from "@/lib/listing-utils";
-import { isListingStale, formatTimeAgo } from "@/lib/listing-utils";
 import {
   AlertTriangle,
   ArrowUpDown,
