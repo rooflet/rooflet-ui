@@ -191,14 +191,23 @@ export default function MarketListingsPage() {
   const loadListings = async () => {
     try {
       setLoading(true);
-      const data = await marketListingsApi.getAll();
-      // Add preference fields with defaults
+
+      // Fetch all listings and interested listings in parallel
+      const [allListings, interestedListings] = await Promise.all([
+        marketListingsApi.getAll(),
+        marketListingsApi.getInterested(),
+      ]);
+
+      // Create a set of interested listing IDs for fast lookup
+      const interestedIds = new Set(interestedListings.map((l) => l.id));
+
+      // Merge interested status into all listings
       const listingsWithPreferences: MarketListingWithPreferenceResponse[] =
-        data.map((listing) => ({
+        allListings.map((listing) => ({
           ...listing,
-          isInterested: false,
-          notes: undefined,
+          isInterested: interestedIds.has(listing.id),
         }));
+
       setListings(listingsWithPreferences);
       // Load expected rents for all listings
       await loadExpectedRents(listingsWithPreferences);
