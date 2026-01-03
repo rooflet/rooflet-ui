@@ -665,8 +665,9 @@ export default function SettingsPage() {
   };
 
   // Zip Code Preference handlers
-  const handleAddZipCode = async () => {
-    if (!selectedZipCode) {
+  const handleAddZipCode = async (zipCode?: string) => {
+    const zipToAdd = zipCode || selectedZipCode;
+    if (!zipToAdd) {
       toast({
         title: "Error",
         description: "Please select a zip code",
@@ -676,7 +677,7 @@ export default function SettingsPage() {
     }
 
     // Validate zip code format
-    const validation = validateZipCode(selectedZipCode);
+    const validation = validateZipCode(zipToAdd);
     if (!validation.isValid) {
       toast({
         title: "Error",
@@ -767,12 +768,12 @@ export default function SettingsPage() {
     }
   };
 
-  // Get available zip codes that are not already added
+  // Get available zip codes that are not already added (limited to 10)
   const getFilteredAvailableZipCodes = () => {
     const existingZipCodes = zipCodePreferences.map((pref) => pref.zipCode);
-    return availableZipCodes.filter(
-      (zipCode) => !existingZipCodes.includes(zipCode.zipCode)
-    );
+    return availableZipCodes
+      .filter((zipCode) => !existingZipCodes.includes(zipCode.zipCode))
+      .slice(0, 10);
   };
 
   // Sort zip codes alphabetically for display
@@ -932,60 +933,46 @@ export default function SettingsPage() {
               </div>
 
               {/* Add Zip Code Section */}
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <Select
-                    value={selectedZipCode}
-                    onValueChange={setSelectedZipCode}
-                    disabled={
-                      zipCodePreferencesLoading ||
-                      isLoadingAvailableZipCodes ||
-                      zipCodePreferences.length >= MAX_ZIP_CODES
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a zip code to add" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {isLoadingAvailableZipCodes ? (
-                        <div className="flex items-center justify-center py-4">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          <span className="ml-2 text-sm">Loading...</span>
-                        </div>
-                      ) : getFilteredAvailableZipCodes().length === 0 ? (
-                        <div className="py-4 text-center text-sm text-muted-foreground">
-                          {zipCodePreferences.length >= MAX_ZIP_CODES
-                            ? "Limit reached"
-                            : "No available zip codes"}
-                        </div>
-                      ) : (
-                        getFilteredAvailableZipCodes().map((zipCode) => (
-                          <SelectItem
-                            key={zipCode.zipCode}
-                            value={zipCode.zipCode}
-                          >
-                            {zipCode.zipCode} ({zipCode.listingCount} listings)
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button
-                  onClick={handleAddZipCode}
+              <div>
+                <Select
+                  value={selectedZipCode}
+                  onValueChange={(value) => {
+                    setSelectedZipCode("");
+                    handleAddZipCode(value);
+                  }}
                   disabled={
-                    !selectedZipCode ||
                     zipCodePreferencesLoading ||
+                    isLoadingAvailableZipCodes ||
                     zipCodePreferences.length >= MAX_ZIP_CODES
                   }
                 >
-                  {zipCodePreferencesLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Plus className="h-4 w-4" />
-                  )}
-                  <span className="ml-2">Add</span>
-                </Button>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a zip code to add" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {isLoadingAvailableZipCodes ? (
+                      <div className="flex items-center justify-center py-4">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span className="ml-2 text-sm">Loading...</span>
+                      </div>
+                    ) : getFilteredAvailableZipCodes().length === 0 ? (
+                      <div className="py-4 text-center text-sm text-muted-foreground">
+                        {zipCodePreferences.length >= MAX_ZIP_CODES
+                          ? "Limit reached"
+                          : "No available zip codes"}
+                      </div>
+                    ) : (
+                      getFilteredAvailableZipCodes().map((zipCode) => (
+                        <SelectItem
+                          key={zipCode.zipCode}
+                          value={zipCode.zipCode}
+                        >
+                          {zipCode.zipCode} ({zipCode.listingCount} listings)
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Display Current Zip Codes */}
