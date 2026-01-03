@@ -7,6 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -31,7 +39,19 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { propertiesApi } from "@/lib/api/properties";
 import { tenantsApi } from "@/lib/api/tenants";
-import type { PropertyResponse } from "@/lib/api/types";
+import { marketListingsApi } from "@/lib/api/market-listings";
+import type {
+  PropertyResponse,
+  MarketListingWithPreferenceResponse,
+  ExpectedRentResponse,
+} from "@/lib/api/types";
+import {
+  calculateInvestmentMetrics,
+  estimateMonthlyPropertyTax,
+  estimateMonthlyInsurance,
+  type FinancingStrategy,
+} from "@/lib/investment-calculations";
+import { isListingStale, formatTimeAgo } from "@/lib/listing-utils";
 import {
   calculatePortfolioMetrics,
   calculatePortfolioTotals,
@@ -41,6 +61,7 @@ import {
 } from "@/lib/services/portfolio-calculations";
 import { useAppSelector } from "@/store/hooks";
 import {
+  AlertTriangle,
   ArrowDown,
   ArrowUp,
   ChevronLeft,
@@ -50,6 +71,7 @@ import {
   Lock,
   Plus,
   RotateCcw,
+  Star,
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -132,6 +154,25 @@ export default function PortfolioPage() {
   );
   const [isFiltersOpen, setIsFiltersOpen] = useState(true);
 
+  // Interested listings state
+  const [showInterestedDialog, setShowInterestedDialog] = useState(false);
+  const [interestedListings, setInterestedListings] = useState<
+    MarketListingWithPreferenceResponse[]
+  >([]);
+  const [loadingInterestedListings, setLoadingInterestedListings] =
+    useState(false);
+  const [temporaryProperties, setTemporaryProperties] = useState<
+    PropertyData[]
+  >([]);
+  const [financingStrategy, setFinancingStrategy] = useState<FinancingStrategy>(
+    {
+      downPaymentType: "percent",
+      downPaymentPercent: 20,
+      interestRate: 6.5,
+      loanTermYears: 30,
+    }
+  );
+
   // Calculate max market value for slider
   const maxMarketValue = Math.max(
     ...properties.map((p) => p.marketValue ?? 0),
@@ -145,6 +186,157 @@ export default function PortfolioPage() {
     cashFlowFilter !== "all" ||
     debtFilter !== "all" ||
     minMarketValue > 0;
+
+  // Load interested listings when dialog opens
+  useEffect(() => {
+    if (showInterestedDialog && interestedListings.length === 0) {
+      loadInterestedListings();
+    }
+  }, [showInterestedDialog]);
+
+  const loadInterestedListings = async () => {
+    setLoadingInterestedListings(true);
+    try {
+      const listings = await marketListingsApi.getInterested();
+
+      // Enrich with expected rent calculations
+      const enrichedListings = await Promise.all(
+        listings.map(async (listing) => {
+          if (!listing.zipCode || !listing.bedrooms) return listing;
+
+          try {
+            const rentData = await marketListingsApi.getExpectedRent(
+              listing.zipCode
+            );
+            if (rentData) {
+              const expectedRentData = rentData.find(
+                (data) => data.bedrooms === listing.bedrooms
+              );
+              if (expectedRentData && listing.price) {
+                const metrics = calculateInvestmentMetrics(
+                  listing.price,
+                  expectedRentData.expectedRent,
+                  financingStrategy,
+                  listing.hoaFee || 0,
+                  estimateMonthlyPropertyTax(listing.price, listing.state),
+                  estimateMonthlyInsurance(listing.price)
+                );
+                return {
+                  ...listing,
+                  calculatedExpectedRent: expectedRentData.expectedRent,
+                  calculatedMonthlyCashflow: metrics.monthlyNetIncome,
+                  calculatedCashOnCash: metrics.cashOnCashReturn,
+                };
+              }
+            }
+          } catch (error) {
+            console.warn(
+              `Failed to calculate metrics for listing ${listing.id}`
+            );
+          }
+          return listing;
+        })
+      );
+
+      setInterestedListings(enrichedListings);
+    } catch (error) {
+      console.error("Failed to load interested listings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load interested listings.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingInterestedListings(false);
+    }
+  };
+
+  const addListingToPortfolio = (
+    listing: MarketListingWithPreferenceResponse
+  ) => {
+    if (!listing.price || !listing.calculatedExpectedRent) {
+      toast({
+        title: "Cannot Add Listing",
+        description: "This listing is missing required price or rent data.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const downPayment =
+      financingStrategy.downPaymentType === "percent"
+        ? listing.price * (financingStrategy.downPaymentPercent / 100)
+        : financingStrategy.downPaymentAmount || 0;
+
+    const debt = listing.price - downPayment;
+    const equity = downPayment;
+
+    const monthlyPropertyTax = estimateMonthlyPropertyTax(
+      listing.price,
+      listing.state
+    );
+    const monthlyInsurance = estimateMonthlyInsurance(listing.price);
+
+    const newProperty: PropertyData = {
+      address: listing.address1 || listing.address || "Interested Listing",
+      state: listing.state,
+      marketValue: listing.price,
+      equity,
+      debt,
+      equityPercent: (equity / listing.price) * 100,
+      rent: listing.calculatedExpectedRent,
+      hoa: listing.hoaFee || 0,
+      reTax: monthlyPropertyTax,
+      insurance: monthlyInsurance,
+      otherExpenses: 0,
+      interestRate: financingStrategy.interestRate,
+      debtService: 0,
+      noiMonthly: 0,
+      noiYearly: 0,
+      cashflow: 0,
+      returnPercent: 0,
+      isNew: true, // Mark as temporary
+    };
+
+    const recalculatedProperty = recalculateProperty(newProperty);
+    setTemporaryProperties([...temporaryProperties, recalculatedProperty]);
+
+    toast({
+      title: "Listing Added",
+      description: `${newProperty.address} has been temporarily added to your portfolio.`,
+    });
+  };
+
+  const removeTemporaryProperty = (index: number) => {
+    setTemporaryProperties(temporaryProperties.filter((_, i) => i !== index));
+  };
+
+  const resetTemporaryProperties = () => {
+    setTemporaryProperties([]);
+    toast({
+      title: "Temporary Listings Cleared",
+      description:
+        "All temporary listings have been removed from the portfolio view.",
+    });
+  };
+
+  const removeInterestedListing = async (id: string) => {
+    try {
+      await marketListingsApi.toggleInterested(id);
+      setInterestedListings((prev) => prev.filter((l) => l.id !== id));
+      toast({
+        title: "Removed from Interested",
+        description: "This listing has been removed from your interested list.",
+      });
+    } catch (error) {
+      console.error("Failed to remove interested listing:", error);
+      toast({
+        title: "Error",
+        description: "Failed to remove listing from interested.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const resetFilters = () => {
     setIncludeVacant(true);
@@ -422,14 +614,16 @@ export default function PortfolioPage() {
     filteredOriginalProperties
   );
 
-  const totals = calculatePortfolioTotals(finalFilteredProperties);
-  const baselineTotals = calculatePortfolioTotals(
-    finalFilteredOriginalProperties
-  );
+  // Combine actual properties with temporary properties for calculations
+  const allProperties = [...finalFilteredProperties, ...temporaryProperties];
+  const allOriginalProperties = finalFilteredOriginalProperties;
 
-  const metrics = calculatePortfolioMetrics(finalFilteredProperties, totals);
+  const totals = calculatePortfolioTotals(allProperties);
+  const baselineTotals = calculatePortfolioTotals(allOriginalProperties);
+
+  const metrics = calculatePortfolioMetrics(allProperties, totals);
   const baselineMetrics = calculatePortfolioMetrics(
-    finalFilteredOriginalProperties,
+    allOriginalProperties,
     baselineTotals
   );
 
@@ -801,7 +995,8 @@ export default function PortfolioPage() {
     );
   };
 
-  const hasNewProperties = properties.some((p) => p.isNew);
+  const hasNewProperties =
+    properties.some((p) => p.isNew) || temporaryProperties.length > 0;
 
   // Get unique states from all properties
   const uniqueStates = Array.from(
@@ -825,6 +1020,31 @@ export default function PortfolioPage() {
         <div className="hidden md:flex items-center justify-between">
           <h1 className="text-2xl font-bold tracking-tight">Portfolio</h1>
           <div className="flex items-center gap-2">
+            <Button
+              onClick={() => setShowInterestedDialog(true)}
+              variant="outline"
+              size="sm"
+              className="gap-1.5 h-8 text-xs px-3 bg-transparent hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent"
+            >
+              <Star className="h-3.5 w-3.5" />
+              Interested Listings
+              {temporaryProperties.length > 0 && (
+                <Badge variant="secondary" className="ml-1 h-4 px-1.5">
+                  {temporaryProperties.length}
+                </Badge>
+              )}
+            </Button>
+            {temporaryProperties.length > 0 && (
+              <Button
+                onClick={resetTemporaryProperties}
+                variant="outline"
+                size="sm"
+                className="gap-1.5 h-8 text-xs px-3 hover:bg-destructive hover:text-destructive-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+                Clear Temporary
+              </Button>
+            )}
             <Button
               onClick={addNewProperty}
               variant="outline"
@@ -1500,6 +1720,15 @@ export default function PortfolioPage() {
                       <Lock className="h-3 w-3" />
                       <span>Calculated</span>
                     </div>
+                    {temporaryProperties.length > 0 && (
+                      <div className="flex items-center gap-0.5 ml-auto">
+                        <Star className="h-3 w-3 text-yellow-500" />
+                        <span className="text-blue-600 dark:text-blue-400 font-semibold">
+                          {temporaryProperties.length} Temporary Listing
+                          {temporaryProperties.length !== 1 ? "s" : ""}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex-1 min-h-0 overflow-auto">
@@ -1663,6 +1892,7 @@ export default function PortfolioPage() {
                             const originalIndex = properties.indexOf(property);
                             const originalProperty =
                               originalProperties[originalIndex];
+                            const isTemporary = false; // Real properties
                             return (
                               <tr
                                 key={index}
@@ -1830,6 +2060,151 @@ export default function PortfolioPage() {
                               </tr>
                             );
                           })}
+
+                          {/* Temporary Properties from Interested Listings */}
+                          {temporaryProperties.map((property, tempIndex) => {
+                            return (
+                              <tr
+                                key={`temp-${tempIndex}`}
+                                className="border-b border-border/50 hover:bg-muted/30 transition-colors bg-blue-50 dark:bg-blue-950/20"
+                              >
+                                {hasNewProperties && (
+                                  <td className="py-0 px-0">
+                                    <Button
+                                      onClick={() =>
+                                        removeTemporaryProperty(tempIndex)
+                                      }
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-4 w-4 p-0 hover:bg-destructive/10 hover:text-destructive"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </Button>
+                                  </td>
+                                )}
+                                <td className="py-0 px-0.5 font-medium text-xs">
+                                  <div className="flex items-center gap-1 min-w-[150px] max-w-[250px]">
+                                    <Star className="h-3 w-3 text-yellow-500 flex-shrink-0" />
+                                    <span
+                                      className="truncate flex-1"
+                                      title={property.address}
+                                    >
+                                      {property.address}
+                                    </span>
+                                    <Badge
+                                      variant="secondary"
+                                      className="text-[10px] px-1 py-0 h-4 flex-shrink-0 bg-blue-500 text-white"
+                                    >
+                                      TEMP
+                                    </Badge>
+                                    {property.state && (
+                                      <Badge
+                                        variant="secondary"
+                                        className="text-[10px] px-1 py-0 h-4 flex-shrink-0"
+                                      >
+                                        {property.state}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="text-right py-0 px-0.5 whitespace-nowrap">
+                                  <ReadOnlyCell
+                                    value={property.marketValue}
+                                    baselineValue={0}
+                                  />
+                                </td>
+                                <td className="text-right py-0 px-0.5 whitespace-nowrap">
+                                  <ReadOnlyCell
+                                    value={property.equity}
+                                    baselineValue={0}
+                                  />
+                                </td>
+                                <td className="text-right py-0 px-0.5 whitespace-nowrap">
+                                  <ReadOnlyCell
+                                    value={property.debt}
+                                    baselineValue={0}
+                                  />
+                                </td>
+                                <td className="text-right py-0 px-0.5 whitespace-nowrap">
+                                  <ReadOnlyCell
+                                    value={property.equityPercent}
+                                    baselineValue={0}
+                                    isPercent
+                                  />
+                                </td>
+                                <td className="text-right py-0 px-0.5 whitespace-nowrap">
+                                  <ReadOnlyCell
+                                    value={property.rent}
+                                    baselineValue={0}
+                                  />
+                                </td>
+                                <td className="text-right py-0 px-0.5 whitespace-nowrap">
+                                  <ReadOnlyCell
+                                    value={property.hoa}
+                                    baselineValue={0}
+                                    isExpense
+                                  />
+                                </td>
+                                <td className="text-right py-0 px-0.5 whitespace-nowrap">
+                                  <ReadOnlyCell
+                                    value={property.reTax}
+                                    baselineValue={0}
+                                    isExpense
+                                  />
+                                </td>
+                                <td className="text-right py-0 px-0.5 whitespace-nowrap">
+                                  <ReadOnlyCell
+                                    value={property.insurance}
+                                    baselineValue={0}
+                                    isExpense
+                                  />
+                                </td>
+                                <td className="text-right py-0 px-0.5 whitespace-nowrap">
+                                  <ReadOnlyCell
+                                    value={property.otherExpenses}
+                                    baselineValue={0}
+                                    isExpense
+                                  />
+                                </td>
+                                <td className="text-right py-0 px-0.5 whitespace-nowrap">
+                                  <ReadOnlyCell
+                                    value={property.interestRate}
+                                    baselineValue={0}
+                                    isPercent
+                                  />
+                                </td>
+                                <td className="text-right py-0 px-0.5 whitespace-nowrap">
+                                  <ReadOnlyCell
+                                    value={property.debtService}
+                                    baselineValue={0}
+                                    isExpense
+                                  />
+                                </td>
+                                <td className="text-right py-0 px-0.5 whitespace-nowrap">
+                                  <ReadOnlyCell
+                                    value={property.noiMonthly}
+                                    baselineValue={0}
+                                    colorize
+                                  />
+                                </td>
+                                <td className="text-right py-0 px-0.5 whitespace-nowrap">
+                                  <ReadOnlyCell
+                                    value={property.cashflow}
+                                    baselineValue={0}
+                                    colorize
+                                  />
+                                </td>
+                                <td className="text-right py-0 px-0.5 whitespace-nowrap">
+                                  <ReadOnlyCell
+                                    value={property.returnPercent}
+                                    baselineValue={0}
+                                    isPercent
+                                    colorize
+                                  />
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -1840,6 +2215,287 @@ export default function PortfolioPage() {
           </Card>
         </TooltipProvider>
       </main>
+
+      {/* Interested Listings Dialog */}
+      <Dialog
+        open={showInterestedDialog}
+        onOpenChange={setShowInterestedDialog}
+      >
+        <DialogContent className="max-w-[95vw] lg:max-w-[85vw] xl:max-w-7xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add Interested Listings to Portfolio</DialogTitle>
+            <DialogDescription>
+              Select listings to temporarily add to your portfolio and see how
+              they affect your metrics. These will not be saved to your actual
+              portfolio.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Financing Strategy Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">
+                  Financing Strategy (30-Year Fixed)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Down Payment Type</Label>
+                    <Select
+                      value={financingStrategy.downPaymentType}
+                      onValueChange={(value: "percent" | "amount") =>
+                        setFinancingStrategy({
+                          ...financingStrategy,
+                          downPaymentType: value,
+                        })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="percent">Percentage</SelectItem>
+                        <SelectItem value="amount">Cash Amount</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {financingStrategy.downPaymentType === "percent" ? (
+                    <div className="space-y-2">
+                      <Label>Down Payment %</Label>
+                      <Input
+                        type="number"
+                        value={financingStrategy.downPaymentPercent}
+                        onChange={(e) =>
+                          setFinancingStrategy({
+                            ...financingStrategy,
+                            downPaymentPercent: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                        min={0}
+                        max={100}
+                        step={0.5}
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <Label>Down Payment Amount</Label>
+                      <Input
+                        type="number"
+                        value={financingStrategy.downPaymentAmount || 0}
+                        onChange={(e) =>
+                          setFinancingStrategy({
+                            ...financingStrategy,
+                            downPaymentAmount: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                        min={0}
+                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label>Interest Rate %</Label>
+                    <Input
+                      type="number"
+                      value={financingStrategy.interestRate}
+                      onChange={(e) =>
+                        setFinancingStrategy({
+                          ...financingStrategy,
+                          interestRate: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      min={0}
+                      max={20}
+                      step={0.1}
+                    />
+                  </div>
+                </div>
+
+                <Button
+                  onClick={loadInterestedListings}
+                  variant="outline"
+                  size="sm"
+                  className="mt-4"
+                  disabled={loadingInterestedListings}
+                >
+                  Recalculate with Current Financing
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Listings List */}
+            {loadingInterestedListings ? (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">
+                  Loading interested listings...
+                </p>
+              </div>
+            ) : interestedListings.length === 0 ? (
+              <div className="text-center py-8">
+                <Star className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">
+                  No interested listings found. Mark listings as interested in
+                  the Market Listings page.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <h3 className="text-xs font-semibold text-muted-foreground">
+                  {interestedListings.length} Interested Listing
+                  {interestedListings.length !== 1 ? "s" : ""}
+                </h3>
+                <div className="grid gap-1">
+                  {interestedListings.map((listing) => {
+                    const isAdded = temporaryProperties.some(
+                      (p) => p.address === (listing.address1 || listing.address)
+                    );
+
+                    return (
+                      <Card
+                        key={listing.id}
+                        className={
+                          isAdded
+                            ? "border-green-500 bg-green-50 dark:bg-green-950"
+                            : ""
+                        }
+                      >
+                        <CardContent className="p-2 py-1.5">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 mb-0.5">
+                                <h4 className="font-semibold text-sm truncate">
+                                  {listing.address1 || listing.address}
+                                </h4>
+                                {isAdded && (
+                                  <Badge
+                                    variant="secondary"
+                                    className="text-[10px] h-4 px-1.5 shrink-0"
+                                  >
+                                    Added
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {listing.city}, {listing.state}{" "}
+                                  {listing.zipCode}
+                                </p>
+                                {listing.updatedAt && (
+                                  <div className="flex items-center gap-1">
+                                    {isListingStale(listing.updatedAt) && (
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <AlertTriangle className="h-3 w-3 text-amber-500" />
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>
+                                            This listing is older than 1 day and
+                                            may have changed status
+                                          </p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    )}
+                                    <span className="text-[10px] text-muted-foreground/70">
+                                      Updated {formatTimeAgo(listing.updatedAt)}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-3 shrink-0">
+                              <div className="flex gap-2 text-xs text-muted-foreground">
+                                <span>{listing.bedrooms}bd</span>
+                                <span>{listing.bathrooms}ba</span>
+                                {listing.squareFeet && (
+                                  <span>
+                                    {(listing.squareFeet / 1000).toFixed(1)}k sf
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="text-right min-w-[100px]">
+                                <div className="text-sm font-bold">
+                                  ${(listing.price! / 1000).toFixed(0)}k
+                                </div>
+                                {listing.calculatedExpectedRent && (
+                                  <div className="text-[10px] text-muted-foreground">
+                                    $
+                                    {listing.calculatedExpectedRent.toLocaleString()}
+                                    /mo
+                                  </div>
+                                )}
+                              </div>
+
+                              {(listing.calculatedMonthlyCashflow ||
+                                listing.calculatedCashOnCash) && (
+                                <div className="text-right min-w-[85px]">
+                                  {listing.calculatedMonthlyCashflow && (
+                                    <div
+                                      className={`text-xs font-semibold ${
+                                        listing.calculatedMonthlyCashflow > 0
+                                          ? "text-green-600 dark:text-green-400"
+                                          : "text-red-600 dark:text-red-400"
+                                      }`}
+                                    >
+                                      {listing.calculatedMonthlyCashflow > 0
+                                        ? "+"
+                                        : ""}
+                                      $
+                                      {listing.calculatedMonthlyCashflow.toFixed(
+                                        0
+                                      )}
+                                      /mo
+                                    </div>
+                                  )}
+                                  {listing.calculatedCashOnCash && (
+                                    <div className="text-[10px] text-muted-foreground">
+                                      {listing.calculatedCashOnCash.toFixed(1)}%
+                                      CoC
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              <div className="flex items-center gap-1.5">
+                                <Button
+                                  onClick={() => addListingToPortfolio(listing)}
+                                  disabled={
+                                    isAdded ||
+                                    !listing.price ||
+                                    !listing.calculatedExpectedRent
+                                  }
+                                  size="sm"
+                                  className="h-7 px-3 text-xs shrink-0"
+                                >
+                                  {isAdded ? "Added" : "Add"}
+                                </Button>
+                                <Button
+                                  onClick={() =>
+                                    removeInterestedListing(listing.id)
+                                  }
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 px-2 text-xs shrink-0 text-muted-foreground hover:text-destructive hover:border-destructive"
+                                >
+                                  Remove from Interested
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
