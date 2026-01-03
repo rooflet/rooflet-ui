@@ -32,7 +32,6 @@ import { resetRentCollections } from "@/store/slices/rentCollectionsSlice";
 import { resetTenants } from "@/store/slices/tenantsSlice";
 import {
   BarChart3,
-  Briefcase,
   Calendar,
   DollarSign,
   Home,
@@ -241,26 +240,6 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Account */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Account</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname.startsWith("/portfolios")}
-                >
-                  <Link href={ROUTES.PORTFOLIOS.LIST}>
-                    <Briefcase />
-                    <span>Portfolio Management</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
