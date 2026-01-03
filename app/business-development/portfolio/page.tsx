@@ -197,7 +197,11 @@ export default function PortfolioPage() {
   const loadInterestedListings = async () => {
     setLoadingInterestedListings(true);
     try {
-      const listings = await marketListingsApi.getInterested();
+      // Keep existing listings during recalculation for seamless update
+      const listings =
+        interestedListings.length > 0
+          ? interestedListings
+          : await marketListingsApi.getInterested();
 
       // Enrich with expected rent calculations
       const enrichedListings = await Promise.all(
@@ -2327,13 +2331,7 @@ export default function PortfolioPage() {
             </Card>
 
             {/* Listings List */}
-            {loadingInterestedListings ? (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">
-                  Loading interested listings...
-                </p>
-              </div>
-            ) : interestedListings.length === 0 ? (
+            {interestedListings.length === 0 && !loadingInterestedListings ? (
               <div className="text-center py-8">
                 <Star className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <p className="text-muted-foreground">
@@ -2343,154 +2341,181 @@ export default function PortfolioPage() {
               </div>
             ) : (
               <div className="space-y-1">
-                <h3 className="text-xs font-semibold text-muted-foreground">
-                  {interestedListings.length} Interested Listing
-                  {interestedListings.length !== 1 ? "s" : ""}
-                </h3>
-                <div className="grid gap-1">
-                  {interestedListings.map((listing) => {
-                    const isAdded = temporaryProperties.some(
-                      (p) => p.address === (listing.address1 || listing.address)
-                    );
+                {loadingInterestedListings &&
+                  interestedListings.length === 0 && (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground">
+                        Loading interested listings...
+                      </p>
+                    </div>
+                  )}
+                {interestedListings.length > 0 && (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-semibold text-muted-foreground">
+                        {interestedListings.length} Interested Listing
+                        {interestedListings.length !== 1 ? "s" : ""}
+                      </h3>
+                      {loadingInterestedListings && (
+                        <span className="text-[10px] text-muted-foreground animate-pulse">
+                          Recalculating...
+                        </span>
+                      )}
+                    </div>
+                    <div className="grid gap-1">
+                      {interestedListings.map((listing) => {
+                        const isAdded = temporaryProperties.some(
+                          (p) =>
+                            p.address === (listing.address1 || listing.address)
+                        );
 
-                    return (
-                      <Card
-                        key={listing.id}
-                        className={
-                          isAdded
-                            ? "border-green-500 bg-green-50 dark:bg-green-950"
-                            : ""
-                        }
-                      >
-                        <CardContent className="p-2 py-1.5">
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5 mb-0.5">
-                                <h4 className="font-semibold text-sm truncate">
-                                  {listing.address1 || listing.address}
-                                </h4>
-                                {isAdded && (
-                                  <Badge
-                                    variant="secondary"
-                                    className="text-[10px] h-4 px-1.5 shrink-0"
-                                  >
-                                    Added
-                                  </Badge>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <p className="text-xs text-muted-foreground truncate">
-                                  {listing.city}, {listing.state}{" "}
-                                  {listing.zipCode}
-                                </p>
-                                {listing.updatedAt && (
-                                  <div className="flex items-center gap-1">
-                                    {isListingStale(listing.updatedAt) && (
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <AlertTriangle className="h-3 w-3 text-amber-500" />
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          <p>
-                                            This listing is older than 1 day and
-                                            may have changed status
-                                          </p>
-                                        </TooltipContent>
-                                      </Tooltip>
+                        return (
+                          <Card
+                            key={listing.id}
+                            className={
+                              isAdded
+                                ? "border-green-500 bg-green-50 dark:bg-green-950"
+                                : ""
+                            }
+                          >
+                            <CardContent className="p-2 py-1.5">
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-1.5 mb-0.5">
+                                    <h4 className="font-semibold text-sm truncate">
+                                      {listing.address1 || listing.address}
+                                    </h4>
+                                    {isAdded && (
+                                      <Badge
+                                        variant="secondary"
+                                        className="text-[10px] h-4 px-1.5 shrink-0"
+                                      >
+                                        Added
+                                      </Badge>
                                     )}
-                                    <span className="text-[10px] text-muted-foreground/70">
-                                      Updated {formatTimeAgo(listing.updatedAt)}
-                                    </span>
                                   </div>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-3 shrink-0">
-                              <div className="flex gap-2 text-xs text-muted-foreground">
-                                <span>{listing.bedrooms}bd</span>
-                                <span>{listing.bathrooms}ba</span>
-                                {listing.squareFeet && (
-                                  <span>
-                                    {(listing.squareFeet / 1000).toFixed(1)}k sf
-                                  </span>
-                                )}
-                              </div>
-
-                              <div className="text-right min-w-[100px]">
-                                <div className="text-sm font-bold">
-                                  ${(listing.price! / 1000).toFixed(0)}k
+                                  <div className="flex items-center gap-2">
+                                    <p className="text-xs text-muted-foreground truncate">
+                                      {listing.city}, {listing.state}{" "}
+                                      {listing.zipCode}
+                                    </p>
+                                    {listing.updatedAt && (
+                                      <div className="flex items-center gap-1">
+                                        {isListingStale(listing.updatedAt) && (
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <AlertTriangle className="h-3 w-3 text-amber-500" />
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              <p>
+                                                This listing is older than 1 day
+                                                and may have changed status
+                                              </p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        )}
+                                        <span className="text-[10px] text-muted-foreground/70">
+                                          Updated{" "}
+                                          {formatTimeAgo(listing.updatedAt)}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
-                                {listing.calculatedExpectedRent && (
-                                  <div className="text-[10px] text-muted-foreground">
-                                    $
-                                    {listing.calculatedExpectedRent.toLocaleString()}
-                                    /mo
-                                  </div>
-                                )}
-                              </div>
 
-                              {(listing.calculatedMonthlyCashflow ||
-                                listing.calculatedCashOnCash) && (
-                                <div className="text-right min-w-[85px]">
-                                  {listing.calculatedMonthlyCashflow && (
-                                    <div
-                                      className={`text-xs font-semibold ${
-                                        listing.calculatedMonthlyCashflow > 0
-                                          ? "text-green-600 dark:text-green-400"
-                                          : "text-red-600 dark:text-red-400"
-                                      }`}
-                                    >
-                                      {listing.calculatedMonthlyCashflow > 0
-                                        ? "+"
-                                        : ""}
-                                      $
-                                      {listing.calculatedMonthlyCashflow.toFixed(
-                                        0
+                                <div className="flex items-center gap-3 shrink-0">
+                                  <div className="flex gap-2 text-xs text-muted-foreground">
+                                    <span>{listing.bedrooms}bd</span>
+                                    <span>{listing.bathrooms}ba</span>
+                                    {listing.squareFeet && (
+                                      <span>
+                                        {(listing.squareFeet / 1000).toFixed(1)}
+                                        k sf
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div className="text-right min-w-[100px]">
+                                    <div className="text-sm font-bold">
+                                      ${(listing.price! / 1000).toFixed(0)}k
+                                    </div>
+                                    {listing.calculatedExpectedRent && (
+                                      <div className="text-[10px] text-muted-foreground">
+                                        $
+                                        {listing.calculatedExpectedRent.toLocaleString()}
+                                        /mo
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {(listing.calculatedMonthlyCashflow ||
+                                    listing.calculatedCashOnCash) && (
+                                    <div className="text-right min-w-[85px]">
+                                      {listing.calculatedMonthlyCashflow && (
+                                        <div
+                                          className={`text-xs font-semibold ${
+                                            listing.calculatedMonthlyCashflow >
+                                            0
+                                              ? "text-green-600 dark:text-green-400"
+                                              : "text-red-600 dark:text-red-400"
+                                          }`}
+                                        >
+                                          {listing.calculatedMonthlyCashflow > 0
+                                            ? "+"
+                                            : ""}
+                                          $
+                                          {listing.calculatedMonthlyCashflow.toFixed(
+                                            0
+                                          )}
+                                          /mo
+                                        </div>
                                       )}
-                                      /mo
+                                      {listing.calculatedCashOnCash && (
+                                        <div className="text-[10px] text-muted-foreground">
+                                          {listing.calculatedCashOnCash.toFixed(
+                                            1
+                                          )}
+                                          % CoC
+                                        </div>
+                                      )}
                                     </div>
                                   )}
-                                  {listing.calculatedCashOnCash && (
-                                    <div className="text-[10px] text-muted-foreground">
-                                      {listing.calculatedCashOnCash.toFixed(1)}%
-                                      CoC
-                                    </div>
-                                  )}
-                                </div>
-                              )}
 
-                              <div className="flex items-center gap-1.5">
-                                <Button
-                                  onClick={() => addListingToPortfolio(listing)}
-                                  disabled={
-                                    isAdded ||
-                                    !listing.price ||
-                                    !listing.calculatedExpectedRent
-                                  }
-                                  size="sm"
-                                  className="h-7 px-3 text-xs shrink-0"
-                                >
-                                  {isAdded ? "Added" : "Add"}
-                                </Button>
-                                <Button
-                                  onClick={() =>
-                                    removeInterestedListing(listing.id)
-                                  }
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-7 px-2 text-xs shrink-0 text-muted-foreground hover:text-destructive hover:border-destructive"
-                                >
-                                  Remove from Interested
-                                </Button>
+                                  <div className="flex items-center gap-1.5">
+                                    <Button
+                                      onClick={() =>
+                                        addListingToPortfolio(listing)
+                                      }
+                                      disabled={
+                                        isAdded ||
+                                        !listing.price ||
+                                        !listing.calculatedExpectedRent
+                                      }
+                                      size="sm"
+                                      className="h-7 px-3 text-xs shrink-0"
+                                    >
+                                      {isAdded ? "Added" : "Add"}
+                                    </Button>
+                                    <Button
+                                      onClick={() =>
+                                        removeInterestedListing(listing.id)
+                                      }
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-7 px-2 text-xs shrink-0 text-muted-foreground hover:text-destructive hover:border-destructive"
+                                    >
+                                      Remove from Interested
+                                    </Button>
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
