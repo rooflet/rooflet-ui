@@ -243,6 +243,16 @@ export default function SettingsPage() {
     }
   }, [refreshKey]);
 
+  // Sync local activePortfolioId with Redux state when portfolio is switched
+  useEffect(() => {
+    if (
+      reduxActivePortfolioId !== null &&
+      reduxActivePortfolioId !== undefined
+    ) {
+      setActivePortfolioId(String(reduxActivePortfolioId));
+    }
+  }, [reduxActivePortfolioId]);
+
   const loadPortfolioData = async () => {
     try {
       setIsLoadingPortfolios(true);
