@@ -31,8 +31,14 @@ export async function apiRequest<T>(
 
     if (!response.ok) {
       if (response.status === 401 || response.status === 403) {
-        // Let the error propagate to Redux thunks
-        // AuthWrapper will handle redirect based on auth state
+        // Dispatch custom event for auth-wrapper to handle
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("api-auth-error", {
+              detail: { status: response.status },
+            })
+          );
+        }
         throw new ApiError("Unauthorized", response.status);
       }
 
