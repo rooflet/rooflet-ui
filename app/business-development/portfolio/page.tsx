@@ -1044,6 +1044,7 @@ export default function PortfolioPage() {
     isPercent = false,
     isExpense = false,
     isIncome = false,
+    displayHasChangedOverride = true,
   }: {
     value: number;
     index: number;
@@ -1051,6 +1052,7 @@ export default function PortfolioPage() {
     isPercent?: boolean;
     isExpense?: boolean;
     isIncome?: boolean;
+    displayHasChangedOverride?: boolean;
   }) => {
     const [isEditing, setIsEditing] = useState(false);
     const safeValue = value ?? 0;
@@ -1118,7 +1120,7 @@ export default function PortfolioPage() {
             } opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0`}
           />
         </div>
-        {hasChanged && (
+        {displayHasChangedOverride && hasChanged && (
           <ChangeIndicator
             current={safeValue}
             baseline={baselineValue}
@@ -1135,12 +1137,14 @@ export default function PortfolioPage() {
     isPercent = false,
     colorize = false,
     isExpense = false,
+    displayHasChangedOverride = true,
   }: {
     value: number;
     baselineValue: number;
     isPercent?: boolean;
     colorize?: boolean;
     isExpense?: boolean;
+    displayHasChangedOverride?: boolean;
   }) => {
     const safeValue = value ?? 0;
     const safeBaselineValue = baselineValue ?? 0;
@@ -1164,7 +1168,7 @@ export default function PortfolioPage() {
           </span>
           <Lock className="h-2.5 w-2.5 text-muted-foreground/50 flex-shrink-0" />
         </div>
-        {hasChanged && (
+        {displayHasChangedOverride && hasChanged && (
           <ChangeIndicator
             current={safeValue}
             baseline={safeBaselineValue}
@@ -2147,7 +2151,6 @@ export default function PortfolioPage() {
                             const originalIndex = properties.indexOf(property);
                             const originalProperty =
                               originalProperties[originalIndex];
-                            const isTemporary = false; // Real properties
                             return (
                               <tr
                                 key={index}
@@ -2365,18 +2368,21 @@ export default function PortfolioPage() {
                                   <ReadOnlyCell
                                     value={property.marketValue}
                                     baselineValue={0}
+                                    displayHasChangedOverride={false}
                                   />
                                 </td>
                                 <td className="text-right py-0 px-0.5 whitespace-nowrap">
                                   <ReadOnlyCell
                                     value={property.equity}
                                     baselineValue={0}
+                                    displayHasChangedOverride={false}
                                   />
                                 </td>
                                 <td className="text-right py-0 px-0.5 whitespace-nowrap">
                                   <ReadOnlyCell
                                     value={property.debt}
                                     baselineValue={0}
+                                    displayHasChangedOverride={false}
                                   />
                                 </td>
                                 <td className="text-right py-0 px-0.5 whitespace-nowrap">
@@ -2384,12 +2390,14 @@ export default function PortfolioPage() {
                                     value={property.equityPercent}
                                     baselineValue={0}
                                     isPercent
+                                    displayHasChangedOverride={false}
                                   />
                                 </td>
                                 <td className="text-right py-0 px-0.5 whitespace-nowrap">
                                   <ReadOnlyCell
                                     value={property.rent}
                                     baselineValue={0}
+                                    displayHasChangedOverride={false}
                                   />
                                 </td>
                                 <td className="text-right py-0 px-0.5 whitespace-nowrap">
@@ -2397,6 +2405,7 @@ export default function PortfolioPage() {
                                     value={property.hoa}
                                     baselineValue={0}
                                     isExpense
+                                    displayHasChangedOverride={false}
                                   />
                                 </td>
                                 <td className="text-right py-0 px-0.5 whitespace-nowrap">
@@ -2404,6 +2413,7 @@ export default function PortfolioPage() {
                                     value={property.reTax}
                                     baselineValue={0}
                                     isExpense
+                                    displayHasChangedOverride={false}
                                   />
                                 </td>
                                 <td className="text-right py-0 px-0.5 whitespace-nowrap">
@@ -2411,6 +2421,7 @@ export default function PortfolioPage() {
                                     value={property.insurance}
                                     baselineValue={0}
                                     isExpense
+                                    displayHasChangedOverride={false}
                                   />
                                 </td>
                                 <td className="text-right py-0 px-0.5 whitespace-nowrap">
@@ -2418,6 +2429,7 @@ export default function PortfolioPage() {
                                     value={property.otherExpenses}
                                     baselineValue={0}
                                     isExpense
+                                    displayHasChangedOverride={false}
                                   />
                                 </td>
                                 <td className="text-right py-0 px-0.5 whitespace-nowrap">
@@ -2425,6 +2437,7 @@ export default function PortfolioPage() {
                                     value={property.interestRate}
                                     baselineValue={0}
                                     isPercent
+                                    displayHasChangedOverride={false}
                                   />
                                 </td>
                                 <td className="text-right py-0 px-0.5 whitespace-nowrap">
@@ -2432,6 +2445,7 @@ export default function PortfolioPage() {
                                     value={property.debtService}
                                     baselineValue={0}
                                     isExpense
+                                    displayHasChangedOverride={false}
                                   />
                                 </td>
                                 <td className="text-right py-0 px-0.5 whitespace-nowrap">
@@ -2439,6 +2453,7 @@ export default function PortfolioPage() {
                                     value={property.noiMonthly}
                                     baselineValue={0}
                                     colorize
+                                    displayHasChangedOverride={false}
                                   />
                                 </td>
                                 <td className="text-right py-0 px-0.5 whitespace-nowrap">
@@ -2446,6 +2461,7 @@ export default function PortfolioPage() {
                                     value={property.cashflow}
                                     baselineValue={0}
                                     colorize
+                                    displayHasChangedOverride={false}
                                   />
                                 </td>
                                 <td className="text-right py-0 px-0.5 whitespace-nowrap">
@@ -2454,6 +2470,7 @@ export default function PortfolioPage() {
                                     baselineValue={0}
                                     isPercent
                                     colorize
+                                    displayHasChangedOverride={false}
                                   />
                                 </td>
                               </tr>
