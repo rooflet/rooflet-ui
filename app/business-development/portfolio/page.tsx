@@ -53,6 +53,14 @@ import {
 } from "@/lib/investment-calculations";
 import { isListingStale, formatTimeAgo } from "@/lib/listing-utils";
 import {
+  formatCurrencyInput,
+  ensureDecimalPadding,
+  parseCurrencyToNumber,
+  formatPercentageInput,
+  ensurePercentagePadding,
+  parsePercentageToNumber,
+} from "@/lib/currency-utils";
+import {
   calculatePortfolioMetrics,
   calculatePortfolioTotals,
   createEmptyProperty,
@@ -168,10 +176,16 @@ export default function PortfolioPage() {
     {
       downPaymentType: "percent",
       downPaymentPercent: 20,
+      downPaymentAmount: 100000,
       interestRate: 6.5,
       loanTermYears: 30,
     }
   );
+  // Local state for input values to avoid update lag
+  const [downPaymentPercentInput, setDownPaymentPercentInput] = useState("20");
+  const [downPaymentAmountInput, setDownPaymentAmountInput] =
+    useState("$100,000.00");
+  const [interestRateInput, setInterestRateInput] = useState("6.5%");
 
   // Calculate max market value for slider
   const maxMarketValue = Math.max(
@@ -2249,12 +2263,25 @@ export default function PortfolioPage() {
                     <Label>Down Payment Type</Label>
                     <Select
                       value={financingStrategy.downPaymentType}
-                      onValueChange={(value: "percent" | "amount") =>
+                      onValueChange={(value: "percent" | "amount") => {
                         setFinancingStrategy({
                           ...financingStrategy,
                           downPaymentType: value,
-                        })
-                      }
+                        });
+                        // Sync input values when switching modes
+                        if (value === "percent") {
+                          setDownPaymentPercentInput(
+                            financingStrategy.downPaymentPercent.toString()
+                          );
+                        } else {
+                          // Format the amount as currency when switching to amount mode
+                          const amount =
+                            financingStrategy.downPaymentAmount || 100000;
+                          setDownPaymentAmountInput(
+                            ensureDecimalPadding(amount.toString())
+                          );
+                        }
+                      }}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -2271,8 +2298,11 @@ export default function PortfolioPage() {
                       <Label>Down Payment %</Label>
                       <Input
                         type="number"
-                        value={financingStrategy.downPaymentPercent}
+                        value={downPaymentPercentInput}
                         onChange={(e) =>
+                          setDownPaymentPercentInput(e.target.value)
+                        }
+                        onBlur={(e) =>
                           setFinancingStrategy({
                             ...financingStrategy,
                             downPaymentPercent: parseFloat(e.target.value) || 0,
@@ -2287,33 +2317,50 @@ export default function PortfolioPage() {
                     <div className="space-y-2">
                       <Label>Down Payment Amount</Label>
                       <Input
-                        type="number"
-                        value={financingStrategy.downPaymentAmount || 0}
+                        type="text"
+                        value={downPaymentAmountInput}
                         onChange={(e) =>
+                          setDownPaymentAmountInput(
+                            formatCurrencyInput(e.target.value)
+                          )
+                        }
+                        onBlur={(e) => {
+                          const formatted = ensureDecimalPadding(
+                            e.target.value
+                          );
+                          setDownPaymentAmountInput(formatted);
                           setFinancingStrategy({
                             ...financingStrategy,
-                            downPaymentAmount: parseFloat(e.target.value) || 0,
-                          })
-                        }
-                        min={0}
+                            downPaymentAmount:
+                              parseCurrencyToNumber(formatted) || 0,
+                          });
+                        }}
+                        placeholder="$200,000.00"
                       />
                     </div>
                   )}
 
                   <div className="space-y-2">
-                    <Label>Interest Rate %</Label>
+                    <Label>Interest Rate</Label>
                     <Input
-                      type="number"
-                      value={financingStrategy.interestRate}
+                      type="text"
+                      value={interestRateInput}
                       onChange={(e) =>
+                        setInterestRateInput(
+                          formatPercentageInput(e.target.value)
+                        )
+                      }
+                      onBlur={(e) => {
+                        const formatted = ensurePercentagePadding(
+                          e.target.value
+                        );
+                        setInterestRateInput(formatted);
                         setFinancingStrategy({
                           ...financingStrategy,
-                          interestRate: parseFloat(e.target.value) || 0,
-                        })
-                      }
-                      min={0}
-                      max={20}
-                      step={0.1}
+                          interestRate: parsePercentageToNumber(formatted) || 0,
+                        });
+                      }}
+                      placeholder="6.125%"
                     />
                   </div>
                 </div>

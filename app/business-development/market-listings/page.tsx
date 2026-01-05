@@ -32,7 +32,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Slider } from "@/components/ui/slider";
 import {
@@ -70,6 +69,14 @@ import {
   type FinancingStrategy,
 } from "@/lib/investment-calculations";
 import { isListingStale, formatTimeAgo } from "@/lib/listing-utils";
+import {
+  formatCurrencyInput,
+  ensureDecimalPadding,
+  parseCurrencyToNumber,
+  formatPercentageInput,
+  ensurePercentagePadding,
+  parsePercentageToNumber,
+} from "@/lib/currency-utils";
 import {
   AlertTriangle,
   ArrowUpDown,
@@ -155,8 +162,8 @@ export default function MarketListingsPage() {
   // Local state for input values to avoid update lag
   const [downPaymentPercentInput, setDownPaymentPercentInput] = useState("20");
   const [downPaymentAmountInput, setDownPaymentAmountInput] =
-    useState("100000");
-  const [interestRateInput, setInterestRateInput] = useState("6");
+    useState("$100,000.00");
+  const [interestRateInput, setInterestRateInput] = useState("6%");
   const [loadingExpectedRents, setLoadingExpectedRents] = useState(false);
 
   useEffect(() => {
@@ -831,9 +838,11 @@ export default function MarketListingsPage() {
                                   financingStrategy.downPaymentPercent.toString()
                                 );
                               } else {
+                                // Format the amount as currency when switching to amount mode
+                                const amount =
+                                  financingStrategy.downPaymentAmount || 100000;
                                 setDownPaymentAmountInput(
-                                  financingStrategy.downPaymentAmount?.toString() ||
-                                    ""
+                                  ensureDecimalPadding(amount.toString())
                                 );
                               }
                             }}
@@ -873,21 +882,26 @@ export default function MarketListingsPage() {
                         ) : (
                           <Input
                             id="downPaymentAmount"
-                            type="number"
-                            min="0"
+                            type="text"
                             value={downPaymentAmountInput}
                             onChange={(e) =>
-                              setDownPaymentAmountInput(e.target.value)
+                              setDownPaymentAmountInput(
+                                formatCurrencyInput(e.target.value)
+                              )
                             }
-                            onBlur={(e) =>
+                            onBlur={(e) => {
+                              const formatted = ensureDecimalPadding(
+                                e.target.value
+                              );
+                              setDownPaymentAmountInput(formatted);
                               setFinancingStrategy({
                                 ...financingStrategy,
                                 downPaymentAmount:
-                                  parseFloat(e.target.value) || undefined,
-                              })
-                            }
+                                  parseCurrencyToNumber(formatted) || undefined,
+                              });
+                            }}
                             className="h-7 text-xs"
-                            placeholder="$"
+                            placeholder="$200,000.00"
                           />
                         )}
                       </div>
@@ -917,23 +931,30 @@ export default function MarketListingsPage() {
                     </div>
                     <div className="space-y-0.5">
                       <Label htmlFor="interestRate" className="text-[11px]">
-                        Interest Rate (%)
+                        Interest Rate
                       </Label>
                       <Input
                         id="interestRate"
-                        type="number"
-                        min="0"
-                        max="20"
-                        step="0.1"
+                        type="text"
                         value={interestRateInput}
-                        onChange={(e) => setInterestRateInput(e.target.value)}
-                        onBlur={(e) =>
+                        onChange={(e) =>
+                          setInterestRateInput(
+                            formatPercentageInput(e.target.value)
+                          )
+                        }
+                        onBlur={(e) => {
+                          const formatted = ensurePercentagePadding(
+                            e.target.value
+                          );
+                          setInterestRateInput(formatted);
                           setFinancingStrategy({
                             ...financingStrategy,
-                            interestRate: parseFloat(e.target.value) || 0,
-                          })
-                        }
+                            interestRate:
+                              parsePercentageToNumber(formatted) || 0,
+                          });
+                        }}
                         className="h-7 text-xs"
+                        placeholder="6.125%"
                       />
                     </div>
                   </div>
