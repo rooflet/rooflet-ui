@@ -208,6 +208,19 @@ export default function PortfolioPage() {
     }
   }, [showInterestedDialog]);
 
+  // Recalculate listings when financing strategy changes
+  useEffect(() => {
+    if (showInterestedDialog && interestedListings.length > 0) {
+      loadInterestedListings();
+    }
+  }, [
+    financingStrategy.downPaymentType,
+    financingStrategy.downPaymentPercent,
+    financingStrategy.downPaymentAmount,
+    financingStrategy.interestRate,
+    financingStrategy.loanTermYears,
+  ]);
+
   const loadInterestedListings = async () => {
     setLoadingInterestedListings(true);
     try {
@@ -2364,16 +2377,6 @@ export default function PortfolioPage() {
                     />
                   </div>
                 </div>
-
-                <Button
-                  onClick={loadInterestedListings}
-                  variant="outline"
-                  size="sm"
-                  className="mt-4"
-                  disabled={loadingInterestedListings}
-                >
-                  Recalculate with Current Financing
-                </Button>
               </CardContent>
             </Card>
 

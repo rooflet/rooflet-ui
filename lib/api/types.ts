@@ -442,6 +442,8 @@ export interface MarketListingWithPreferenceResponse {
   calculatedDSCR?: number;
   calculatedBreakEvenRatio?: number;
   calculatedOER?: number;
+  calculatedDownPayment?: number;
+  calculatedLoanAmount?: number;
 }
 
 // Expected Rent types
