@@ -2339,7 +2339,6 @@ export default function PortfolioPage() {
                                 )}
                                 <td className="py-0 px-0.5 font-medium text-xs">
                                   <div className="flex items-center gap-1 min-w-[150px] max-w-[250px]">
-                                    <Star className="h-3 w-3 text-yellow-500 flex-shrink-0" />
                                     <span
                                       className="truncate flex-1"
                                       title={property.address}
