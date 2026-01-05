@@ -31,6 +31,14 @@ import {
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -49,6 +57,13 @@ import {
   calculateInvestmentMetrics,
   estimateMonthlyPropertyTax,
   estimateMonthlyInsurance,
+  meets2PercentRule,
+  meets50PercentRule,
+  calculatePriceToRentRatio,
+  calculateCapRate,
+  calculateDSCR,
+  calculateBreakEvenRatio,
+  calculateOperatingExpenseRatio,
   type FinancingStrategy,
 } from "@/lib/investment-calculations";
 import { isListingStale, formatTimeAgo } from "@/lib/listing-utils";
@@ -112,6 +127,161 @@ const getValueColor = (value: number) => {
 
 const getExpenseColor = () => {
   return "text-red-600 dark:text-red-400";
+};
+
+// Helper functions for formatting and colors (from market-listings)
+const formatCurrency = (value?: number) => {
+  if (!value) return "N/A";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
+};
+
+const getCashflowColor = (cashflow?: number) => {
+  if (cashflow === undefined)
+    return { variant: "secondary" as const, className: "" };
+  if (cashflow >= 200)
+    return {
+      variant: "default" as const,
+      className: "bg-green-600 hover:bg-green-700",
+    };
+  if (cashflow >= 0)
+    return {
+      variant: "default" as const,
+      className: "bg-yellow-600 hover:bg-yellow-700",
+    };
+  return {
+    variant: "default" as const,
+    className: "bg-red-600 hover:bg-red-700",
+  };
+};
+
+const getCapRateColor = (capRate?: number) => {
+  if (capRate === undefined)
+    return { variant: "secondary" as const, className: "" };
+  if (capRate >= 8)
+    return {
+      variant: "default" as const,
+      className: "bg-green-600 hover:bg-green-700",
+    };
+  if (capRate >= 5)
+    return {
+      variant: "default" as const,
+      className: "bg-yellow-600 hover:bg-yellow-700",
+    };
+  return {
+    variant: "default" as const,
+    className: "bg-red-600 hover:bg-red-700",
+  };
+};
+
+const getCocColor = (coc?: number) => {
+  if (coc === undefined)
+    return { variant: "secondary" as const, className: "" };
+  if (coc >= 8)
+    return {
+      variant: "default" as const,
+      className: "bg-green-600 hover:bg-green-700",
+    };
+  if (coc >= 5)
+    return {
+      variant: "default" as const,
+      className: "bg-yellow-600 hover:bg-yellow-700",
+    };
+  return {
+    variant: "default" as const,
+    className: "bg-red-600 hover:bg-red-700",
+  };
+};
+
+const getPriceToRentColor = (ratio?: number) => {
+  if (ratio === undefined)
+    return { variant: "secondary" as const, className: "" };
+  if (ratio <= 15)
+    return {
+      variant: "default" as const,
+      className: "bg-green-600 hover:bg-green-700",
+    };
+  if (ratio <= 20)
+    return {
+      variant: "default" as const,
+      className: "bg-yellow-600 hover:bg-yellow-700",
+    };
+  return {
+    variant: "default" as const,
+    className: "bg-red-600 hover:bg-red-700",
+  };
+};
+
+const getSourceColor = (source: string) => {
+  const sourceLower = source.toLowerCase();
+  if (sourceLower.includes("redfin")) return "bg-red-500 hover:bg-red-600";
+  if (sourceLower.includes("zillow")) return "bg-blue-500 hover:bg-blue-600";
+  if (sourceLower.includes("realtor"))
+    return "bg-purple-500 hover:bg-purple-600";
+  if (sourceLower.includes("trulia"))
+    return "bg-orange-500 hover:bg-orange-600";
+  return "bg-gray-500 hover:bg-gray-600";
+};
+
+const getDSCRColor = (dscr?: number) => {
+  if (dscr === undefined)
+    return { variant: "secondary" as const, className: "" };
+  if (dscr >= 1.25)
+    return {
+      variant: "default" as const,
+      className: "bg-green-600 hover:bg-green-700",
+    };
+  if (dscr >= 1.0)
+    return {
+      variant: "default" as const,
+      className: "bg-yellow-600 hover:bg-yellow-700",
+    };
+  return {
+    variant: "default" as const,
+    className: "bg-red-600 hover:bg-red-700",
+  };
+};
+
+const getBreakEvenColor = (ratio?: number) => {
+  if (ratio === undefined)
+    return { variant: "secondary" as const, className: "" };
+  if (ratio < 85)
+    return {
+      variant: "default" as const,
+      className: "bg-green-600 hover:bg-green-700",
+    };
+  if (ratio < 100)
+    return {
+      variant: "default" as const,
+      className: "bg-yellow-600 hover:bg-yellow-700",
+    };
+  return {
+    variant: "default" as const,
+    className: "bg-red-600 hover:bg-red-700",
+  };
+};
+
+const getOERColor = (oer?: number) => {
+  if (oer === undefined)
+    return { variant: "secondary" as const, className: "" };
+  if (oer <= 40)
+    return {
+      variant: "default" as const,
+      className: "bg-green-600 hover:bg-green-700",
+    };
+  if (oer <= 50)
+    return {
+      variant: "default" as const,
+      className: "bg-yellow-600 hover:bg-yellow-700",
+    };
+  return {
+    variant: "default" as const,
+    className: "bg-red-600 hover:bg-red-700",
+  };
 };
 
 export default function PortfolioPage() {
@@ -244,19 +414,57 @@ export default function PortfolioPage() {
                 (data) => data.bedrooms === listing.bedrooms
               );
               if (expectedRentData && listing.price) {
+                const expectedRent = expectedRentData.expectedRent;
                 const metrics = calculateInvestmentMetrics(
                   listing.price,
-                  expectedRentData.expectedRent,
+                  expectedRent,
                   financingStrategy,
                   listing.hoaFee || 0,
                   estimateMonthlyPropertyTax(listing.price, listing.state),
                   estimateMonthlyInsurance(listing.price)
                 );
+
+                // Calculate additional rules of thumb
+                const meets2Percent = meets2PercentRule(
+                  expectedRent,
+                  listing.price
+                );
+                const meets50Percent = meets50PercentRule(
+                  expectedRent,
+                  metrics.monthlyMortgagePayment
+                );
+                const priceToRent = calculatePriceToRentRatio(
+                  listing.price,
+                  expectedRent
+                );
+                const capRate = calculateCapRate(listing.price, expectedRent);
+                const dscr = calculateDSCR(
+                  expectedRent,
+                  metrics.monthlyMortgagePayment
+                );
+                const breakEvenRatio = calculateBreakEvenRatio(
+                  expectedRent,
+                  metrics.monthlyMortgagePayment
+                );
+                const oer = calculateOperatingExpenseRatio(expectedRent);
+
                 return {
                   ...listing,
-                  calculatedExpectedRent: expectedRentData.expectedRent,
-                  calculatedMonthlyCashflow: metrics.monthlyNetIncome,
+                  calculatedExpectedRent: expectedRent,
+                  calculatedMonthlyPayment: metrics.monthlyMortgagePayment,
                   calculatedCashOnCash: metrics.cashOnCashReturn,
+                  calculatedMeets1Percent: metrics.meets1PercentRule,
+                  calculatedMeets2Percent: meets2Percent,
+                  calculatedMeets50Percent: meets50Percent,
+                  calculatedPriceToRent: priceToRent,
+                  calculatedCapRate: capRate,
+                  calculatedMonthlyCashflow: metrics.monthlyNetIncome,
+                  calculatedTotalMonthlyExpenses: metrics.totalMonthlyExpenses,
+                  calculatedMonthlyPropertyTax: metrics.monthlyPropertyTax,
+                  calculatedMonthlyInsurance: metrics.monthlyInsurance,
+                  calculatedDSCR: dscr,
+                  calculatedBreakEvenRatio: breakEvenRatio,
+                  calculatedOER: oer,
                 };
               }
             }
@@ -366,6 +574,22 @@ export default function PortfolioPage() {
         description: "Failed to remove listing from interested.",
         variant: "destructive",
       });
+    }
+  };
+
+  // Helper function to calculate down payment amount and percentage
+  const getDownPaymentInfo = (price: number) => {
+    if (
+      financingStrategy.downPaymentType === "amount" &&
+      financingStrategy.downPaymentAmount !== undefined
+    ) {
+      const amount = financingStrategy.downPaymentAmount;
+      const percent = (amount / price) * 100;
+      return { amount, percent };
+    } else {
+      const percent = financingStrategy.downPaymentPercent;
+      const amount = price * (percent / 100);
+      return { amount, percent };
     }
   };
 
@@ -2390,7 +2614,7 @@ export default function PortfolioPage() {
                 </p>
               </div>
             ) : (
-              <div className="space-y-1">
+              <div className="space-y-2">
                 {loadingInterestedListings &&
                   interestedListings.length === 0 && (
                     <div className="text-center py-8">
@@ -2401,7 +2625,7 @@ export default function PortfolioPage() {
                   )}
                 {interestedListings.length > 0 && (
                   <>
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mb-2">
                       <h3 className="text-xs font-semibold text-muted-foreground">
                         {interestedListings.length} Interested Listing
                         {interestedListings.length !== 1 ? "s" : ""}
@@ -2412,158 +2636,447 @@ export default function PortfolioPage() {
                         </span>
                       )}
                     </div>
-                    <div className="grid gap-1">
-                      {interestedListings.map((listing) => {
-                        const isAdded = temporaryProperties.some(
-                          (p) =>
-                            p.address === (listing.address1 || listing.address)
-                        );
+                    <Card>
+                      <CardContent className="p-0">
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="w-8 p-2"></TableHead>
+                                <TableHead className="p-2 min-w-[140px]">
+                                  Address / Location
+                                </TableHead>
+                                <TableHead className="text-right p-2">
+                                  <div className="text-xs">Price</div>
+                                </TableHead>
+                                <TableHead className="text-right p-2 w-24">
+                                  <div className="text-xs">Down / %</div>
+                                </TableHead>
+                                <TableHead className="text-center p-2 w-12">
+                                  <div className="text-xs">Bd/Ba</div>
+                                </TableHead>
+                                <TableHead className="text-right p-2 w-16">
+                                  <div className="text-xs">Sqft</div>
+                                </TableHead>
+                                <TableHead className="text-center p-2 w-12">
+                                  <div className="text-xs">DOM</div>
+                                </TableHead>
+                                {/* Analysis Sections */}
+                                <TableHead className="text-right p-2 w-20 bg-blue-50 dark:bg-blue-950/20">
+                                  <div className="text-xs">Rent</div>
+                                </TableHead>
+                                <TableHead className="text-center p-2 w-12 bg-purple-50 dark:bg-purple-950/20">
+                                  <div className="text-xs">1%</div>
+                                </TableHead>
+                                <TableHead className="text-center p-2 w-12 bg-purple-50 dark:bg-purple-950/20">
+                                  <div className="text-xs">2%</div>
+                                </TableHead>
+                                <TableHead className="text-center p-2 w-12 bg-purple-50 dark:bg-purple-950/20">
+                                  <div className="text-xs">50%</div>
+                                </TableHead>
+                                <TableHead className="text-right p-2 w-20 bg-green-50 dark:bg-green-950/20">
+                                  <div className="text-xs">CF/mo</div>
+                                </TableHead>
+                                <TableHead className="text-right p-2 w-16 bg-green-50 dark:bg-green-950/20">
+                                  <div className="text-xs">Cap%</div>
+                                </TableHead>
+                                <TableHead className="text-right p-2 w-16 bg-green-50 dark:bg-green-950/20">
+                                  <div className="text-xs">CoC%</div>
+                                </TableHead>
+                                <TableHead className="text-right p-2 w-16 bg-green-50 dark:bg-green-950/20">
+                                  <div className="text-xs">P/R</div>
+                                </TableHead>
+                                <TableHead className="text-right p-2 w-16 bg-green-50 dark:bg-green-950/20">
+                                  <div className="text-xs">DSCR</div>
+                                </TableHead>
+                                <TableHead className="text-right p-2 w-16 bg-green-50 dark:bg-green-950/20">
+                                  <div className="text-xs">BER%</div>
+                                </TableHead>
+                                <TableHead className="text-right p-2 w-16 bg-green-50 dark:bg-green-950/20">
+                                  <div className="text-xs">OER%</div>
+                                </TableHead>
+                                <TableHead className="p-2 w-32 text-center">
+                                  <div className="text-xs">Actions</div>
+                                </TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {interestedListings.map((listing) => {
+                                const isAdded = temporaryProperties.some(
+                                  (p) =>
+                                    p.address ===
+                                    (listing.address1 || listing.address)
+                                );
 
-                        return (
-                          <Card
-                            key={listing.id}
-                            className={
-                              isAdded
-                                ? "border-green-500 bg-green-50 dark:bg-green-950"
-                                : ""
-                            }
-                          >
-                            <CardContent className="p-2 py-1.5">
-                              <div className="flex items-center justify-between gap-3">
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-1.5 mb-0.5">
-                                    <h4 className="font-semibold text-sm truncate">
-                                      {listing.address1 || listing.address}
-                                    </h4>
-                                    {isAdded && (
-                                      <Badge
-                                        variant="secondary"
-                                        className="text-[10px] h-4 px-1.5 shrink-0"
-                                      >
-                                        Added
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <p className="text-xs text-muted-foreground truncate">
-                                      {listing.city}, {listing.state}{" "}
-                                      {listing.zipCode}
-                                    </p>
-                                    {listing.updatedAt && (
-                                      <div className="flex items-center gap-1">
-                                        {isListingStale(listing.updatedAt) && (
-                                          <Tooltip>
-                                            <TooltipTrigger asChild>
-                                              <AlertTriangle className="h-3 w-3 text-amber-500" />
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                              <p>
-                                                This listing is older than 1 day
-                                                and may have changed status
-                                              </p>
-                                            </TooltipContent>
-                                          </Tooltip>
-                                        )}
-                                        <span className="text-[10px] text-muted-foreground/70">
-                                          Updated{" "}
-                                          {formatTimeAgo(listing.updatedAt)}
-                                        </span>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-
-                                <div className="flex items-center gap-3 shrink-0">
-                                  <div className="flex gap-2 text-xs text-muted-foreground">
-                                    <span>{listing.bedrooms}bd</span>
-                                    <span>{listing.bathrooms}ba</span>
-                                    {listing.squareFeet && (
-                                      <span>
-                                        {(listing.squareFeet / 1000).toFixed(1)}
-                                        k sf
-                                      </span>
-                                    )}
-                                  </div>
-
-                                  <div className="text-right min-w-[100px]">
-                                    <div className="text-sm font-bold">
-                                      ${(listing.price! / 1000).toFixed(0)}k
-                                    </div>
-                                    {listing.calculatedExpectedRent && (
-                                      <div className="text-[10px] text-muted-foreground">
-                                        $
-                                        {listing.calculatedExpectedRent.toLocaleString()}
-                                        /mo
-                                      </div>
-                                    )}
-                                  </div>
-
-                                  {(listing.calculatedMonthlyCashflow ||
-                                    listing.calculatedCashOnCash) && (
-                                    <div className="text-right min-w-[85px]">
-                                      {listing.calculatedMonthlyCashflow && (
-                                        <div
-                                          className={`text-xs font-semibold ${
-                                            listing.calculatedMonthlyCashflow >
-                                            0
-                                              ? "text-green-600 dark:text-green-400"
-                                              : "text-red-600 dark:text-red-400"
-                                          }`}
+                                return (
+                                  <TableRow
+                                    key={listing.id}
+                                    className={
+                                      isAdded
+                                        ? "bg-green-50 dark:bg-green-950/20"
+                                        : ""
+                                    }
+                                  >
+                                    <TableCell className="p-2">
+                                      {isAdded && (
+                                        <Badge
+                                          variant="secondary"
+                                          className="text-[10px] h-4 px-1.5"
                                         >
-                                          {listing.calculatedMonthlyCashflow > 0
-                                            ? "+"
-                                            : ""}
-                                          $
-                                          {listing.calculatedMonthlyCashflow.toFixed(
-                                            0
-                                          )}
-                                          /mo
-                                        </div>
+                                          ✓
+                                        </Badge>
                                       )}
-                                      {listing.calculatedCashOnCash && (
-                                        <div className="text-[10px] text-muted-foreground">
+                                    </TableCell>
+                                    <TableCell className="p-2">
+                                      <div className="flex items-center gap-2 mb-0.5">
+                                        {listing.sourceUrl && (
+                                          <Badge
+                                            className={`${getSourceColor(
+                                              listing.source
+                                            )} text-white text-[10px] h-4 px-1.5 cursor-pointer shrink-0`}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              window.open(
+                                                listing.sourceUrl,
+                                                "_blank"
+                                              );
+                                            }}
+                                          >
+                                            {listing.source}
+                                          </Badge>
+                                        )}
+                                        {listing.propertyType && (
+                                          <Badge
+                                            variant="outline"
+                                            className="text-[10px] h-4 px-1.5 shrink-0"
+                                          >
+                                            {listing.propertyType}
+                                          </Badge>
+                                        )}
+                                        <div className="text-xs font-medium leading-tight truncate">
+                                          {listing.address1 || listing.address}
+                                        </div>
+                                      </div>
+                                      <div className="text-xs text-muted-foreground leading-tight">
+                                        {listing.city}, {listing.state}{" "}
+                                        {listing.zipCode}
+                                      </div>
+                                      <div className="text-[10px] text-muted-foreground/70 leading-tight mt-0.5 flex items-center gap-1">
+                                        {isListingStale(listing.updatedAt) && (
+                                          <TooltipProvider>
+                                            <Tooltip>
+                                              <TooltipTrigger asChild>
+                                                <AlertTriangle className="h-3 w-3 text-amber-500" />
+                                              </TooltipTrigger>
+                                              <TooltipContent>
+                                                <p>
+                                                  This listing is older than 1
+                                                  day and may have changed
+                                                  status
+                                                </p>
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          </TooltipProvider>
+                                        )}
+                                        Updated{" "}
+                                        {formatTimeAgo(listing.updatedAt)}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-right p-2">
+                                      <div className="text-xs font-semibold">
+                                        {formatCurrency(listing.price)}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-right p-2">
+                                      <div className="text-xs text-muted-foreground">
+                                        {(() => {
+                                          const { amount, percent } =
+                                            getDownPaymentInfo(
+                                              listing.price || 0
+                                            );
+                                          return (
+                                            <>
+                                              <div className="font-medium">
+                                                {formatCurrency(amount)}
+                                              </div>
+                                              <div className="text-[10px]">
+                                                ({percent.toFixed(1)}%)
+                                              </div>
+                                            </>
+                                          );
+                                        })()}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-center p-2">
+                                      <div className="text-xs">
+                                        {listing.bedrooms || "-"}/
+                                        {listing.bathrooms || "-"}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-right p-2">
+                                      <div className="text-xs">
+                                        {listing.squareFeet
+                                          ? listing.squareFeet.toLocaleString()
+                                          : "-"}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-center p-2">
+                                      <div className="text-xs">
+                                        {listing.daysOnMarket !== undefined
+                                          ? listing.daysOnMarket
+                                          : "-"}
+                                      </div>
+                                    </TableCell>
+
+                                    {/* Rental Income Analysis */}
+                                    <TableCell className="text-right p-2 bg-blue-50 dark:bg-blue-950/20">
+                                      {listing.calculatedExpectedRent ? (
+                                        <div className="text-xs font-medium">
+                                          {formatCurrency(
+                                            listing.calculatedExpectedRent
+                                          )}
+                                        </div>
+                                      ) : (
+                                        <span className="text-muted-foreground text-xs">
+                                          -
+                                        </span>
+                                      )}
+                                    </TableCell>
+
+                                    {/* Investment Rules Analysis */}
+                                    <TableCell className="text-center p-2 bg-purple-50 dark:bg-purple-950/20">
+                                      {listing.calculatedMeets1Percent !==
+                                      undefined ? (
+                                        <Badge
+                                          className={
+                                            listing.calculatedMeets1Percent
+                                              ? "bg-green-600 hover:bg-green-700 text-xs h-5 px-2"
+                                              : "bg-red-600 hover:bg-red-700 text-xs h-5 px-2"
+                                          }
+                                        >
+                                          {listing.calculatedMeets1Percent
+                                            ? "✓"
+                                            : "✗"}
+                                        </Badge>
+                                      ) : (
+                                        <span className="text-muted-foreground text-xs">
+                                          -
+                                        </span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-center p-2 bg-purple-50 dark:bg-purple-950/20">
+                                      {listing.calculatedMeets2Percent !==
+                                      undefined ? (
+                                        <Badge
+                                          className={
+                                            listing.calculatedMeets2Percent
+                                              ? "bg-green-600 hover:bg-green-700 text-xs h-5 px-2"
+                                              : "bg-red-600 hover:bg-red-700 text-xs h-5 px-2"
+                                          }
+                                        >
+                                          {listing.calculatedMeets2Percent
+                                            ? "✓"
+                                            : "✗"}
+                                        </Badge>
+                                      ) : (
+                                        <span className="text-muted-foreground text-xs">
+                                          -
+                                        </span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-center p-2 bg-purple-50 dark:bg-purple-950/20">
+                                      {listing.calculatedMeets50Percent !==
+                                      undefined ? (
+                                        <Badge
+                                          className={
+                                            listing.calculatedMeets50Percent
+                                              ? "bg-green-600 hover:bg-green-700 text-xs h-5 px-2"
+                                              : "bg-red-600 hover:bg-red-700 text-xs h-5 px-2"
+                                          }
+                                        >
+                                          {listing.calculatedMeets50Percent
+                                            ? "✓"
+                                            : "✗"}
+                                        </Badge>
+                                      ) : (
+                                        <span className="text-muted-foreground text-xs">
+                                          -
+                                        </span>
+                                      )}
+                                    </TableCell>
+
+                                    {/* Returns Analysis */}
+                                    <TableCell className="text-right p-2 bg-green-50 dark:bg-green-950/20">
+                                      {listing.calculatedMonthlyCashflow !==
+                                      undefined ? (
+                                        <Badge
+                                          className={`${
+                                            getCashflowColor(
+                                              listing.calculatedMonthlyCashflow
+                                            ).className
+                                          } text-xs h-5 px-1.5`}
+                                        >
+                                          {listing.calculatedMonthlyCashflow >=
+                                          0
+                                            ? "+"
+                                            : "-"}
+                                          $
+                                          {Math.abs(
+                                            listing.calculatedMonthlyCashflow
+                                          ).toFixed(0)}
+                                        </Badge>
+                                      ) : (
+                                        <span className="text-muted-foreground text-xs">
+                                          -
+                                        </span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-right p-2 bg-green-50 dark:bg-green-950/20">
+                                      {listing.calculatedCapRate !==
+                                      undefined ? (
+                                        <Badge
+                                          className={`${
+                                            getCapRateColor(
+                                              listing.calculatedCapRate
+                                            ).className
+                                          } text-xs h-5 px-1.5`}
+                                        >
+                                          {listing.calculatedCapRate.toFixed(1)}
+                                        </Badge>
+                                      ) : (
+                                        <span className="text-muted-foreground text-xs">
+                                          -
+                                        </span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-right p-2 bg-green-50 dark:bg-green-950/20">
+                                      {listing.calculatedCashOnCash !==
+                                      undefined ? (
+                                        <Badge
+                                          className={`${
+                                            getCocColor(
+                                              listing.calculatedCashOnCash
+                                            ).className
+                                          } text-xs h-5 px-1.5`}
+                                        >
                                           {listing.calculatedCashOnCash.toFixed(
                                             1
                                           )}
-                                          % CoC
-                                        </div>
+                                        </Badge>
+                                      ) : (
+                                        <span className="text-muted-foreground text-xs">
+                                          -
+                                        </span>
                                       )}
-                                    </div>
-                                  )}
-
-                                  <div className="flex items-center gap-1.5">
-                                    <Button
-                                      onClick={() =>
-                                        addListingToPortfolio(listing)
-                                      }
-                                      disabled={
-                                        isAdded ||
-                                        !listing.price ||
-                                        !listing.calculatedExpectedRent
-                                      }
-                                      size="sm"
-                                      className="h-7 px-3 text-xs shrink-0"
-                                    >
-                                      {isAdded ? "Added" : "Add"}
-                                    </Button>
-                                    <Button
-                                      onClick={() =>
-                                        removeInterestedListing(listing.id)
-                                      }
-                                      variant="outline"
-                                      size="sm"
-                                      className="h-7 px-2 text-xs shrink-0 text-muted-foreground hover:text-destructive hover:border-destructive"
-                                    >
-                                      Remove from Interested
-                                    </Button>
-                                  </div>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        );
-                      })}
-                    </div>
+                                    </TableCell>
+                                    <TableCell className="text-right p-2 bg-green-50 dark:bg-green-950/20">
+                                      {listing.calculatedPriceToRent !==
+                                      undefined ? (
+                                        <Badge
+                                          className={`${
+                                            getPriceToRentColor(
+                                              listing.calculatedPriceToRent
+                                            ).className
+                                          } text-xs h-5 px-1.5`}
+                                        >
+                                          {listing.calculatedPriceToRent.toFixed(
+                                            0
+                                          )}
+                                        </Badge>
+                                      ) : (
+                                        <span className="text-muted-foreground text-xs">
+                                          -
+                                        </span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-right p-2 bg-green-50 dark:bg-green-950/20">
+                                      {listing.calculatedDSCR !== undefined ? (
+                                        <Badge
+                                          className={`${
+                                            getDSCRColor(listing.calculatedDSCR)
+                                              .className
+                                          } text-xs h-5 px-1.5`}
+                                        >
+                                          {listing.calculatedDSCR.toFixed(2)}
+                                        </Badge>
+                                      ) : (
+                                        <span className="text-muted-foreground text-xs">
+                                          -
+                                        </span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-right p-2 bg-green-50 dark:bg-green-950/20">
+                                      {listing.calculatedBreakEvenRatio !==
+                                      undefined ? (
+                                        <Badge
+                                          className={`${
+                                            getBreakEvenColor(
+                                              listing.calculatedBreakEvenRatio
+                                            ).className
+                                          } text-xs h-5 px-1.5`}
+                                        >
+                                          {listing.calculatedBreakEvenRatio.toFixed(
+                                            0
+                                          )}
+                                        </Badge>
+                                      ) : (
+                                        <span className="text-muted-foreground text-xs">
+                                          -
+                                        </span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-right p-2 bg-green-50 dark:bg-green-950/20">
+                                      {listing.calculatedOER !== undefined ? (
+                                        <Badge
+                                          className={`${
+                                            getOERColor(listing.calculatedOER)
+                                              .className
+                                          } text-xs h-5 px-1.5`}
+                                        >
+                                          {listing.calculatedOER.toFixed(0)}
+                                        </Badge>
+                                      ) : (
+                                        <span className="text-muted-foreground text-xs">
+                                          -
+                                        </span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="p-2">
+                                      <div className="flex items-center gap-1 justify-center">
+                                        <Button
+                                          onClick={() =>
+                                            addListingToPortfolio(listing)
+                                          }
+                                          disabled={
+                                            isAdded ||
+                                            !listing.price ||
+                                            !listing.calculatedExpectedRent
+                                          }
+                                          size="sm"
+                                          className="h-6 px-2 text-xs shrink-0"
+                                        >
+                                          {isAdded ? "Added" : "Add"}
+                                        </Button>
+                                        <Button
+                                          onClick={() =>
+                                            removeInterestedListing(listing.id)
+                                          }
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-6 w-6 p-0 text-xs shrink-0 text-muted-foreground hover:text-destructive"
+                                        >
+                                          <X className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </CardContent>
+                    </Card>
                   </>
                 )}
               </div>
