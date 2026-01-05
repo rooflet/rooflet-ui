@@ -78,7 +78,7 @@ const businessDevItems = [
     href: "/business-development/portfolio",
   },
   {
-    title: "Market Listings",
+    title: "Market Feed",
     icon: TrendingUp,
     href: "/business-development/market-listings",
   },

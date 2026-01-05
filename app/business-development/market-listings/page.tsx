@@ -755,7 +755,7 @@ export default function MarketListingsPage() {
     <div className="flex-1 overflow-y-auto">
       <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background px-4">
         <div className="flex-1">
-          <h1 className="text-xl font-semibold">Market Listings</h1>
+          <h1 className="text-xl font-semibold">Market Feed</h1>
           <p className="text-sm text-muted-foreground">
             Browse and track property listings from various sources
           </p>
