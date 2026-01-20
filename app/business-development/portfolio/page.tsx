@@ -699,6 +699,20 @@ export default function PortfolioPage() {
     setIsModified(true);
   };
 
+  const updateTemporaryProperty = (
+    index: number,
+    field: keyof PropertyData,
+    value: number,
+  ) => {
+    const updatedProperties = [...temporaryProperties];
+    updatedProperties[index] = {
+      ...updatedProperties[index],
+      [field]: value,
+    };
+    updatedProperties[index] = recalculateProperty(updatedProperties[index]);
+    setTemporaryProperties(updatedProperties);
+  };
+
   const addNewProperty = () => {
     const newProperty = createEmptyProperty();
     setProperties([...properties, newProperty]);
@@ -1045,6 +1059,7 @@ export default function PortfolioPage() {
     isExpense = false,
     isIncome = false,
     displayHasChangedOverride = true,
+    updateProperty: updatePropertyFunc,
   }: {
     value: number;
     index: number;
@@ -1053,6 +1068,11 @@ export default function PortfolioPage() {
     isExpense?: boolean;
     isIncome?: boolean;
     displayHasChangedOverride?: boolean;
+    updateProperty?: (
+      index: number,
+      field: keyof PropertyData,
+      value: number,
+    ) => void;
   }) => {
     const [isEditing, setIsEditing] = useState(false);
     const safeValue = value ?? 0;
@@ -1065,7 +1085,9 @@ export default function PortfolioPage() {
 
     const handleBlur = () => {
       const numValue = Number.parseFloat(inputValue) || 0;
-      updateProperty(index, field, numValue);
+      // Use provided updateProperty function or fall back to default
+      const updateFunc = updatePropertyFunc || updateProperty;
+      updateFunc(index, field, numValue);
       setIsEditing(false);
     };
 
@@ -2365,10 +2387,14 @@ export default function PortfolioPage() {
                                   </div>
                                 </td>
                                 <td className="text-right py-0 px-0.5 whitespace-nowrap">
-                                  <ReadOnlyCell
+                                  <EditableCell
                                     value={property.marketValue}
-                                    baselineValue={0}
+                                    index={tempIndex}
+                                    field="marketValue"
                                     displayHasChangedOverride={false}
+                                    updateProperty={(idx, field, value) =>
+                                      updateTemporaryProperty(idx, field, value)
+                                    }
                                   />
                                 </td>
                                 <td className="text-right py-0 px-0.5 whitespace-nowrap">
@@ -2379,10 +2405,14 @@ export default function PortfolioPage() {
                                   />
                                 </td>
                                 <td className="text-right py-0 px-0.5 whitespace-nowrap">
-                                  <ReadOnlyCell
+                                  <EditableCell
                                     value={property.debt}
-                                    baselineValue={0}
+                                    index={tempIndex}
+                                    field="debt"
                                     displayHasChangedOverride={false}
+                                    updateProperty={(idx, field, value) =>
+                                      updateTemporaryProperty(idx, field, value)
+                                    }
                                   />
                                 </td>
                                 <td className="text-right py-0 px-0.5 whitespace-nowrap">
@@ -2394,50 +2424,75 @@ export default function PortfolioPage() {
                                   />
                                 </td>
                                 <td className="text-right py-0 px-0.5 whitespace-nowrap">
-                                  <ReadOnlyCell
+                                  <EditableCell
                                     value={property.rent}
-                                    baselineValue={0}
+                                    index={tempIndex}
+                                    field="rent"
+                                    isIncome
                                     displayHasChangedOverride={false}
+                                    updateProperty={(idx, field, value) =>
+                                      updateTemporaryProperty(idx, field, value)
+                                    }
                                   />
                                 </td>
                                 <td className="text-right py-0 px-0.5 whitespace-nowrap">
-                                  <ReadOnlyCell
+                                  <EditableCell
                                     value={property.hoa}
-                                    baselineValue={0}
+                                    index={tempIndex}
+                                    field="hoa"
                                     isExpense
                                     displayHasChangedOverride={false}
+                                    updateProperty={(idx, field, value) =>
+                                      updateTemporaryProperty(idx, field, value)
+                                    }
                                   />
                                 </td>
                                 <td className="text-right py-0 px-0.5 whitespace-nowrap">
-                                  <ReadOnlyCell
+                                  <EditableCell
                                     value={property.reTax}
-                                    baselineValue={0}
+                                    index={tempIndex}
+                                    field="reTax"
                                     isExpense
                                     displayHasChangedOverride={false}
+                                    updateProperty={(idx, field, value) =>
+                                      updateTemporaryProperty(idx, field, value)
+                                    }
                                   />
                                 </td>
                                 <td className="text-right py-0 px-0.5 whitespace-nowrap">
-                                  <ReadOnlyCell
+                                  <EditableCell
                                     value={property.insurance}
-                                    baselineValue={0}
+                                    index={tempIndex}
+                                    field="insurance"
                                     isExpense
                                     displayHasChangedOverride={false}
+                                    updateProperty={(idx, field, value) =>
+                                      updateTemporaryProperty(idx, field, value)
+                                    }
                                   />
                                 </td>
                                 <td className="text-right py-0 px-0.5 whitespace-nowrap">
-                                  <ReadOnlyCell
+                                  <EditableCell
                                     value={property.otherExpenses}
-                                    baselineValue={0}
+                                    index={tempIndex}
+                                    field="otherExpenses"
                                     isExpense
                                     displayHasChangedOverride={false}
+                                    updateProperty={(idx, field, value) =>
+                                      updateTemporaryProperty(idx, field, value)
+                                    }
                                   />
                                 </td>
                                 <td className="text-right py-0 px-0.5 whitespace-nowrap">
-                                  <ReadOnlyCell
+                                  <EditableCell
                                     value={property.interestRate}
-                                    baselineValue={0}
+                                    index={tempIndex}
+                                    field="interestRate"
                                     isPercent
                                     displayHasChangedOverride={false}
+                                    updateProperty={(idx, field, value) =>
+                                      updateTemporaryProperty(idx, field, value)
+                                    }
                                   />
                                 </td>
                                 <td className="text-right py-0 px-0.5 whitespace-nowrap">
