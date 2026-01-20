@@ -15,32 +15,32 @@ export const portfoliosApi = {
       `/api/portfolios${activeOnly ? "?activeOnly=true" : ""}`
     ),
 
-  getById: (id: number) => api.get<PortfolioResponse>(`/api/portfolios/${id}`),
+  getById: (id: string) => api.get<PortfolioResponse>(`/api/portfolios/${id}`),
 
   create: (data: CreatePortfolioRequest) =>
     api.post<PortfolioResponse>("/api/portfolios", data),
 
-  update: (id: number, data: UpdatePortfolioRequest) =>
+  update: (id: string, data: UpdatePortfolioRequest) =>
     api.put<PortfolioResponse>(`/api/portfolios/${id}`, data),
 
-  archive: (id: number) =>
+  archive: (id: string) =>
     api.put<PortfolioResponse>(`/api/portfolios/${id}/archive`),
 
-  unarchive: (id: number) =>
+  unarchive: (id: string) =>
     api.put<PortfolioResponse>(`/api/portfolios/${id}/unarchive`),
 
-  switchPortfolio: (id: number) =>
+  switchPortfolio: (id: string) =>
     api.post<MessageResponse>(`/api/portfolios/${id}/switch`),
 
-  getMembers: (id: number) =>
+  getMembers: (id: string) =>
     api.get<PortfolioMemberResponse[]>(`/api/portfolios/${id}/members`),
 
-  addMember: (id: number, data: AddPortfolioMemberRequest) =>
+  addMember: (id: string, data: AddPortfolioMemberRequest) =>
     api.post<PortfolioMemberResponse>(`/api/portfolios/${id}/members`, data),
 
   updateMemberRole: (
-    portfolioId: number,
-    userId: number,
+    portfolioId: string,
+    userId: string,
     data: UpdatePortfolioMemberRoleRequest
   ) =>
     api.put<PortfolioMemberResponse>(
@@ -48,7 +48,7 @@ export const portfoliosApi = {
       data
     ),
 
-  removeMember: (portfolioId: number, userId: number) =>
+  removeMember: (portfolioId: string, userId: string) =>
     api.delete<MessageResponse>(
       `/api/portfolios/${portfolioId}/members/${userId}`
     ),

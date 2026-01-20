@@ -330,3 +330,153 @@ export interface AddPortfolioMemberRequest {
 export interface UpdatePortfolioMemberRoleRequest {
   role: PortfolioRole; // required
 }
+
+// Market Listings types
+export interface MarketListingResponse {
+  id: string; // format: uuid
+  source: string; // Listing source
+  sourceListingId: string; // External listing ID from the source
+  sourceUrl?: string; // URL to the listing on the source website
+  sourceMlsNumber?: string; // MLS listing number if available
+  saleType?: string; // Sale type
+  listingStatus?: string; // Current listing status
+  soldDate?: string; // format: date
+  listDate?: string; // format: date
+  daysOnMarket?: number; // format: int32
+  address?: string; // Full address as provided by source
+  address1?: string; // Parsed primary address
+  address2?: string; // Parsed secondary address (unit, apt, etc.)
+  city?: string;
+  state?: string; // State abbreviation
+  zipCode?: string;
+  location?: string; // Neighborhood or area name
+  latitude?: number; // Geographic latitude
+  longitude?: number; // Geographic longitude
+  propertyType?: string; // Type of property
+  bedrooms?: number; // format: int32
+  bathrooms?: number;
+  squareFeet?: number; // format: int32 - Interior square footage
+  lotSize?: number; // format: int32 - Lot size in square feet
+  yearBuilt?: number; // format: int32
+  price?: number; // Current listing price or sold price
+  pricePerSqft?: number; // Price per square foot
+  originalListPrice?: number; // Original listing price
+  hoaFee?: number; // Monthly HOA fee
+  nextOpenHouseStart?: string; // format: date-time
+  nextOpenHouseEnd?: string; // format: date-time
+  rawData?: string; // JSON/text storage for additional source-specific fields
+  createdAt: string; // format: date-time
+  updatedAt: string; // format: date-time
+  lastScrapedAt?: string; // format: date-time
+
+  // Calculated fields (client-side only)
+  calculatedExpectedRent?: number;
+  calculatedMonthlyPayment?: number;
+  calculatedCashOnCash?: number;
+  calculatedMeets1Percent?: boolean;
+  calculatedMeets2Percent?: boolean;
+  calculatedMeets50Percent?: boolean;
+  calculatedPriceToRent?: number;
+  calculatedCapRate?: number;
+  calculatedMonthlyCashflow?: number;
+  calculatedTotalMonthlyExpenses?: number;
+  calculatedMonthlyPropertyTax?: number;
+  calculatedMonthlyInsurance?: number;
+  calculatedDSCR?: number;
+  calculatedBreakEvenRatio?: number;
+  calculatedOER?: number;
+}
+
+export interface MarketListingWithPreferenceResponse {
+  id: string; // format: uuid
+  source: string; // Listing source
+  sourceListingId: string; // External listing ID from the source
+  sourceUrl?: string; // URL to the listing on the source website
+  sourceMlsNumber?: string; // MLS listing number if available
+  saleType?: string; // Sale type
+  listingStatus?: string; // Current listing status
+  soldDate?: string; // format: date
+  listDate?: string; // format: date
+  daysOnMarket?: number; // format: int32
+  address?: string; // Full address as provided by source
+  address1?: string; // Parsed primary address
+  address2?: string; // Parsed secondary address (unit, apt, etc.)
+  city?: string;
+  state?: string; // State abbreviation
+  zipCode?: string;
+  location?: string; // Neighborhood or area name
+  latitude?: number; // Geographic latitude
+  longitude?: number; // Geographic longitude
+  propertyType?: string; // Type of property
+  bedrooms?: number; // format: int32
+  bathrooms?: number;
+  squareFeet?: number; // format: int32 - Interior square footage
+  lotSize?: number; // format: int32 - Lot size in square feet
+  yearBuilt?: number; // format: int32
+  price?: number; // Current listing price or sold price
+  pricePerSqft?: number; // Price per square foot
+  originalListPrice?: number; // Original listing price
+  hoaFee?: number; // Monthly HOA fee
+  nextOpenHouseStart?: string; // format: date-time
+  nextOpenHouseEnd?: string; // format: date-time
+  rawData?: string; // JSON/text storage for additional source-specific fields
+  createdAt: string; // format: date-time
+  updatedAt: string; // format: date-time
+  lastScrapedAt?: string; // format: date-time
+  isInterested: boolean; // User marked as interested in this listing
+  notes?: string; // User notes about this listing
+
+  // Calculated fields (client-side only)
+  calculatedExpectedRent?: number;
+  calculatedMonthlyPayment?: number;
+  calculatedCashOnCash?: number;
+  calculatedMeets1Percent?: boolean;
+  calculatedMeets2Percent?: boolean;
+  calculatedMeets50Percent?: boolean;
+  calculatedPriceToRent?: number;
+  calculatedCapRate?: number;
+  calculatedMonthlyCashflow?: number;
+  calculatedTotalMonthlyExpenses?: number;
+  calculatedMonthlyPropertyTax?: number;
+  calculatedMonthlyInsurance?: number;
+  calculatedDSCR?: number;
+  calculatedBreakEvenRatio?: number;
+  calculatedOER?: number;
+  calculatedDownPayment?: number;
+  calculatedLoanAmount?: number;
+}
+
+// Expected Rent types
+export interface ExpectedRentResponse {
+  id: string; // format: uuid
+  zipCode: string; // ZIP code
+  bedrooms: number; // format: int32 - Number of bedrooms
+  expectedRent: number; // Expected rent amount
+  source: string; // Data source
+  effectiveDate: string; // format: date - Effective date of the rent standard
+  createdAt: string; // format: date-time
+  updatedAt: string; // format: date-time
+}
+
+export interface ExpectedRentByZipResponse {
+  zipCode: string;
+  rentByBedroom: ExpectedRentResponse[];
+}
+
+// User Zip Code Preferences types
+export interface ZipCodePreferenceResponse {
+  userId: string; // format: uuid
+  zipCode: string; // ZIP code
+  createdAt: string; // format: date-time - Creation timestamp
+}
+
+export interface AddZipCodePreferenceRequest {
+  zipCode: string; // required - ZIP code to watch
+}
+
+export interface AvailableZipCodeResponse {
+  zipCode: string; // ZIP code
+  listingCount: number; // format: int64 - Number of active market listings in this zip code
+  expectedRentCount: number; // format: int64 - Number of expected rent records for this zip code
+  isWatched: boolean; // Whether user is currently watching this zip code
+}

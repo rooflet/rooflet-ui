@@ -32,7 +32,6 @@ import { resetRentCollections } from "@/store/slices/rentCollectionsSlice";
 import { resetTenants } from "@/store/slices/tenantsSlice";
 import {
   BarChart3,
-  Briefcase,
   Calendar,
   DollarSign,
   Home,
@@ -40,6 +39,7 @@ import {
   LogOut,
   Receipt,
   Settings,
+  TrendingUp,
   Users,
 } from "lucide-react";
 import Link from "next/link";
@@ -76,6 +76,11 @@ const businessDevItems = [
     title: "Portfolio",
     icon: BarChart3,
     href: "/business-development/portfolio",
+  },
+  {
+    title: "Market Feed",
+    icon: TrendingUp,
+    href: "/business-development/market-listings",
   },
 ];
 
@@ -235,26 +240,6 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Account */}
-        <SidebarGroup>
-          <SidebarGroupLabel>Account</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname.startsWith("/portfolios")}
-                >
-                  <Link href={ROUTES.PORTFOLIOS.LIST}>
-                    <Briefcase />
-                    <span>Portfolio Management</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
