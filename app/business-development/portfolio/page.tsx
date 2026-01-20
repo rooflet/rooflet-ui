@@ -7,6 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -23,6 +31,14 @@ import {
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -31,7 +47,34 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { propertiesApi } from "@/lib/api/properties";
 import { tenantsApi } from "@/lib/api/tenants";
-import type { PropertyResponse } from "@/lib/api/types";
+import { marketListingsApi } from "@/lib/api/market-listings";
+import type {
+  PropertyResponse,
+  MarketListingWithPreferenceResponse,
+  ExpectedRentResponse,
+} from "@/lib/api/types";
+import {
+  calculateInvestmentMetrics,
+  estimateMonthlyPropertyTax,
+  estimateMonthlyInsurance,
+  meets2PercentRule,
+  meets50PercentRule,
+  calculatePriceToRentRatio,
+  calculateCapRate,
+  calculateDSCR,
+  calculateBreakEvenRatio,
+  calculateOperatingExpenseRatio,
+  type FinancingStrategy,
+} from "@/lib/investment-calculations";
+import { isListingStale, formatTimeAgo } from "@/lib/listing-utils";
+import {
+  formatCurrencyInput,
+  ensureDecimalPadding,
+  parseCurrencyToNumber,
+  formatPercentageInput,
+  ensurePercentagePadding,
+  parsePercentageToNumber,
+} from "@/lib/currency-utils";
 import {
   calculatePortfolioMetrics,
   calculatePortfolioTotals,
@@ -41,6 +84,7 @@ import {
 } from "@/lib/services/portfolio-calculations";
 import { useAppSelector } from "@/store/hooks";
 import {
+  AlertTriangle,
   ArrowDown,
   ArrowUp,
   ChevronLeft,
@@ -50,6 +94,7 @@ import {
   Lock,
   Plus,
   RotateCcw,
+  Star,
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -84,10 +129,165 @@ const getExpenseColor = () => {
   return "text-red-600 dark:text-red-400";
 };
 
+// Helper functions for formatting and colors (from market-listings)
+const formatCurrency = (value?: number) => {
+  if (!value) return "N/A";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
+};
+
+const getCashflowColor = (cashflow?: number) => {
+  if (cashflow === undefined)
+    return { variant: "secondary" as const, className: "" };
+  if (cashflow >= 200)
+    return {
+      variant: "default" as const,
+      className: "bg-green-600 hover:bg-green-700",
+    };
+  if (cashflow >= 0)
+    return {
+      variant: "default" as const,
+      className: "bg-yellow-600 hover:bg-yellow-700",
+    };
+  return {
+    variant: "default" as const,
+    className: "bg-red-600 hover:bg-red-700",
+  };
+};
+
+const getCapRateColor = (capRate?: number) => {
+  if (capRate === undefined)
+    return { variant: "secondary" as const, className: "" };
+  if (capRate >= 8)
+    return {
+      variant: "default" as const,
+      className: "bg-green-600 hover:bg-green-700",
+    };
+  if (capRate >= 5)
+    return {
+      variant: "default" as const,
+      className: "bg-yellow-600 hover:bg-yellow-700",
+    };
+  return {
+    variant: "default" as const,
+    className: "bg-red-600 hover:bg-red-700",
+  };
+};
+
+const getCocColor = (coc?: number) => {
+  if (coc === undefined)
+    return { variant: "secondary" as const, className: "" };
+  if (coc >= 8)
+    return {
+      variant: "default" as const,
+      className: "bg-green-600 hover:bg-green-700",
+    };
+  if (coc >= 5)
+    return {
+      variant: "default" as const,
+      className: "bg-yellow-600 hover:bg-yellow-700",
+    };
+  return {
+    variant: "default" as const,
+    className: "bg-red-600 hover:bg-red-700",
+  };
+};
+
+const getPriceToRentColor = (ratio?: number) => {
+  if (ratio === undefined)
+    return { variant: "secondary" as const, className: "" };
+  if (ratio <= 15)
+    return {
+      variant: "default" as const,
+      className: "bg-green-600 hover:bg-green-700",
+    };
+  if (ratio <= 20)
+    return {
+      variant: "default" as const,
+      className: "bg-yellow-600 hover:bg-yellow-700",
+    };
+  return {
+    variant: "default" as const,
+    className: "bg-red-600 hover:bg-red-700",
+  };
+};
+
+const getSourceColor = (source: string) => {
+  const sourceLower = source.toLowerCase();
+  if (sourceLower.includes("redfin")) return "bg-red-500 hover:bg-red-600";
+  if (sourceLower.includes("zillow")) return "bg-blue-500 hover:bg-blue-600";
+  if (sourceLower.includes("realtor"))
+    return "bg-purple-500 hover:bg-purple-600";
+  if (sourceLower.includes("trulia"))
+    return "bg-orange-500 hover:bg-orange-600";
+  return "bg-gray-500 hover:bg-gray-600";
+};
+
+const getDSCRColor = (dscr?: number) => {
+  if (dscr === undefined)
+    return { variant: "secondary" as const, className: "" };
+  if (dscr >= 1.25)
+    return {
+      variant: "default" as const,
+      className: "bg-green-600 hover:bg-green-700",
+    };
+  if (dscr >= 1.0)
+    return {
+      variant: "default" as const,
+      className: "bg-yellow-600 hover:bg-yellow-700",
+    };
+  return {
+    variant: "default" as const,
+    className: "bg-red-600 hover:bg-red-700",
+  };
+};
+
+const getBreakEvenColor = (ratio?: number) => {
+  if (ratio === undefined)
+    return { variant: "secondary" as const, className: "" };
+  if (ratio < 85)
+    return {
+      variant: "default" as const,
+      className: "bg-green-600 hover:bg-green-700",
+    };
+  if (ratio < 100)
+    return {
+      variant: "default" as const,
+      className: "bg-yellow-600 hover:bg-yellow-700",
+    };
+  return {
+    variant: "default" as const,
+    className: "bg-red-600 hover:bg-red-700",
+  };
+};
+
+const getOERColor = (oer?: number) => {
+  if (oer === undefined)
+    return { variant: "secondary" as const, className: "" };
+  if (oer <= 40)
+    return {
+      variant: "default" as const,
+      className: "bg-green-600 hover:bg-green-700",
+    };
+  if (oer <= 50)
+    return {
+      variant: "default" as const,
+      className: "bg-yellow-600 hover:bg-yellow-700",
+    };
+  return {
+    variant: "default" as const,
+    className: "bg-red-600 hover:bg-red-700",
+  };
+};
+
 export default function PortfolioPage() {
   const { toast } = useToast();
   const { refreshKey, activePortfolioId } = useAppSelector(
-    (state) => state.portfolio
+    (state) => state.portfolio,
   );
   const STORAGE_KEY = `portfolio-modified-properties-${activePortfolioId}`;
   const FILTERS_STORAGE_KEY = `portfolio-filters-${activePortfolioId}`;
@@ -108,7 +308,7 @@ export default function PortfolioPage() {
   const savedFilters = loadSavedFilters();
 
   const [originalProperties, setOriginalProperties] = useState<PropertyData[]>(
-    []
+    [],
   );
   const [properties, setProperties] = useState<PropertyData[]>([]);
   const [isModified, setIsModified] = useState(false);
@@ -116,26 +316,51 @@ export default function PortfolioPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [includeVacant, setIncludeVacant] = useState(
-    savedFilters?.includeVacant ?? true
+    savedFilters?.includeVacant ?? true,
   );
   const [selectedStates, setSelectedStates] = useState<string[]>(
-    savedFilters?.selectedStates ?? []
+    savedFilters?.selectedStates ?? [],
   );
   const [cashFlowFilter, setCashFlowFilter] = useState<string>(
-    savedFilters?.cashFlowFilter ?? "all"
+    savedFilters?.cashFlowFilter ?? "all",
   );
   const [debtFilter, setDebtFilter] = useState<string>(
-    savedFilters?.debtFilter ?? "all"
+    savedFilters?.debtFilter ?? "all",
   );
   const [minMarketValue, setMinMarketValue] = useState<number>(
-    savedFilters?.minMarketValue ?? 0
+    savedFilters?.minMarketValue ?? 0,
   );
   const [isFiltersOpen, setIsFiltersOpen] = useState(true);
+
+  // Interested listings state
+  const [showInterestedDialog, setShowInterestedDialog] = useState(false);
+  const [interestedListings, setInterestedListings] = useState<
+    MarketListingWithPreferenceResponse[]
+  >([]);
+  const [loadingInterestedListings, setLoadingInterestedListings] =
+    useState(false);
+  const [temporaryProperties, setTemporaryProperties] = useState<
+    PropertyData[]
+  >([]);
+  const [financingStrategy, setFinancingStrategy] = useState<FinancingStrategy>(
+    {
+      downPaymentType: "percent",
+      downPaymentPercent: 20,
+      downPaymentAmount: 100000,
+      interestRate: 6.5,
+      loanTermYears: 30,
+    },
+  );
+  // Local state for input values to avoid update lag
+  const [downPaymentPercentInput, setDownPaymentPercentInput] = useState("20");
+  const [downPaymentAmountInput, setDownPaymentAmountInput] =
+    useState("$100,000.00");
+  const [interestRateInput, setInterestRateInput] = useState("6.5%");
 
   // Calculate max market value for slider
   const maxMarketValue = Math.max(
     ...properties.map((p) => p.marketValue ?? 0),
-    500000
+    500000,
   );
 
   // Check if any filters are active
@@ -145,6 +370,228 @@ export default function PortfolioPage() {
     cashFlowFilter !== "all" ||
     debtFilter !== "all" ||
     minMarketValue > 0;
+
+  // Load interested listings when dialog opens
+  useEffect(() => {
+    if (showInterestedDialog && interestedListings.length === 0) {
+      loadInterestedListings();
+    }
+  }, [showInterestedDialog]);
+
+  // Recalculate listings when financing strategy changes
+  useEffect(() => {
+    if (showInterestedDialog && interestedListings.length > 0) {
+      loadInterestedListings();
+    }
+  }, [
+    financingStrategy.downPaymentType,
+    financingStrategy.downPaymentPercent,
+    financingStrategy.downPaymentAmount,
+    financingStrategy.interestRate,
+    financingStrategy.loanTermYears,
+  ]);
+
+  const loadInterestedListings = async () => {
+    setLoadingInterestedListings(true);
+    try {
+      // Keep existing listings during recalculation for seamless update
+      const listings =
+        interestedListings.length > 0
+          ? interestedListings
+          : await marketListingsApi.getInterested();
+
+      // Enrich with expected rent calculations
+      const enrichedListings = await Promise.all(
+        listings.map(async (listing) => {
+          if (!listing.zipCode || !listing.bedrooms) return listing;
+
+          try {
+            const rentData = await marketListingsApi.getExpectedRent(
+              listing.zipCode,
+            );
+            if (rentData) {
+              const expectedRentData = rentData.find(
+                (data) => data.bedrooms === listing.bedrooms,
+              );
+              if (expectedRentData && listing.price) {
+                const expectedRent = expectedRentData.expectedRent;
+                const metrics = calculateInvestmentMetrics(
+                  listing.price,
+                  expectedRent,
+                  financingStrategy,
+                  listing.hoaFee || 0,
+                  estimateMonthlyPropertyTax(listing.price, listing.state),
+                  estimateMonthlyInsurance(listing.price),
+                );
+
+                // Calculate additional rules of thumb
+                const meets2Percent = meets2PercentRule(
+                  expectedRent,
+                  listing.price,
+                );
+                const meets50Percent = meets50PercentRule(
+                  expectedRent,
+                  metrics.monthlyMortgagePayment,
+                );
+                const priceToRent = calculatePriceToRentRatio(
+                  listing.price,
+                  expectedRent,
+                );
+                const capRate = calculateCapRate(listing.price, expectedRent);
+                const dscr = calculateDSCR(
+                  expectedRent,
+                  metrics.monthlyMortgagePayment,
+                );
+                const breakEvenRatio = calculateBreakEvenRatio(
+                  expectedRent,
+                  metrics.monthlyMortgagePayment,
+                );
+                const oer = calculateOperatingExpenseRatio(expectedRent);
+
+                return {
+                  ...listing,
+                  calculatedExpectedRent: expectedRent,
+                  calculatedMonthlyPayment: metrics.monthlyMortgagePayment,
+                  calculatedCashOnCash: metrics.cashOnCashReturn,
+                  calculatedMeets1Percent: metrics.meets1PercentRule,
+                  calculatedMeets2Percent: meets2Percent,
+                  calculatedMeets50Percent: meets50Percent,
+                  calculatedPriceToRent: priceToRent,
+                  calculatedCapRate: capRate,
+                  calculatedMonthlyCashflow: metrics.monthlyNetIncome,
+                  calculatedTotalMonthlyExpenses: metrics.totalMonthlyExpenses,
+                  calculatedMonthlyPropertyTax: metrics.monthlyPropertyTax,
+                  calculatedMonthlyInsurance: metrics.monthlyInsurance,
+                  calculatedDSCR: dscr,
+                  calculatedBreakEvenRatio: breakEvenRatio,
+                  calculatedOER: oer,
+                };
+              }
+            }
+          } catch (error) {
+            console.warn(
+              `Failed to calculate metrics for listing ${listing.id}`,
+            );
+          }
+          return listing;
+        }),
+      );
+
+      setInterestedListings(enrichedListings);
+    } catch (error) {
+      console.error("Failed to load interested listings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load interested listings.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingInterestedListings(false);
+    }
+  };
+
+  const addListingToPortfolio = (
+    listing: MarketListingWithPreferenceResponse,
+  ) => {
+    if (!listing.price || !listing.calculatedExpectedRent) {
+      toast({
+        title: "Cannot Add Listing",
+        description: "This listing is missing required price or rent data.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const downPayment =
+      financingStrategy.downPaymentType === "percent"
+        ? listing.price * (financingStrategy.downPaymentPercent / 100)
+        : financingStrategy.downPaymentAmount || 0;
+
+    const debt = listing.price - downPayment;
+    const equity = downPayment;
+
+    const monthlyPropertyTax = estimateMonthlyPropertyTax(
+      listing.price,
+      listing.state,
+    );
+    const monthlyInsurance = estimateMonthlyInsurance(listing.price);
+
+    const newProperty: PropertyData = {
+      address: listing.address1 || listing.address || "Interested Listing",
+      state: listing.state,
+      marketValue: listing.price,
+      equity,
+      debt,
+      equityPercent: (equity / listing.price) * 100,
+      rent: listing.calculatedExpectedRent,
+      hoa: listing.hoaFee || 0,
+      reTax: monthlyPropertyTax,
+      insurance: monthlyInsurance,
+      otherExpenses: 0,
+      interestRate: financingStrategy.interestRate,
+      debtService: 0,
+      noiMonthly: 0,
+      noiYearly: 0,
+      cashflow: 0,
+      returnPercent: 0,
+      isNew: true, // Mark as temporary
+    };
+
+    const recalculatedProperty = recalculateProperty(newProperty);
+    setTemporaryProperties([...temporaryProperties, recalculatedProperty]);
+
+    toast({
+      title: "Listing Added",
+      description: `${newProperty.address} has been temporarily added to your portfolio.`,
+    });
+  };
+
+  const removeTemporaryProperty = (index: number) => {
+    setTemporaryProperties(temporaryProperties.filter((_, i) => i !== index));
+  };
+
+  const resetTemporaryProperties = () => {
+    setTemporaryProperties([]);
+    toast({
+      title: "Temporary Listings Cleared",
+      description:
+        "All temporary listings have been removed from the portfolio view.",
+    });
+  };
+
+  const removeInterestedListing = async (id: string) => {
+    try {
+      await marketListingsApi.toggleInterested(id);
+      setInterestedListings((prev) => prev.filter((l) => l.id !== id));
+      toast({
+        title: "Removed from Interested",
+        description: "This listing has been removed from your interested list.",
+      });
+    } catch (error) {
+      console.error("Failed to remove interested listing:", error);
+      toast({
+        title: "Error",
+        description: "Failed to remove listing from interested.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Helper function to calculate down payment amount and percentage
+  const getDownPaymentInfo = (price: number) => {
+    if (
+      financingStrategy.downPaymentType === "amount" &&
+      financingStrategy.downPaymentAmount !== undefined
+    ) {
+      const amount = financingStrategy.downPaymentAmount;
+      const percent = (amount / price) * 100;
+      return { amount, percent };
+    } else {
+      const percent = financingStrategy.downPaymentPercent;
+      const amount = price * (percent / 100);
+      return { amount, percent };
+    }
+  };
 
   const resetFilters = () => {
     setIncludeVacant(true);
@@ -177,7 +624,7 @@ export default function PortfolioPage() {
             });
             const totalRent = tenants.reduce(
               (sum, tenant) => sum + (tenant.monthlyRent ?? 0),
-              0
+              0,
             );
 
             const propertyData: PropertyData = {
@@ -200,7 +647,7 @@ export default function PortfolioPage() {
               returnPercent: 0,
             };
             return recalculateProperty(propertyData);
-          })
+          }),
         );
 
         setOriginalProperties(propertiesWithRent);
@@ -240,7 +687,7 @@ export default function PortfolioPage() {
   const updateProperty = (
     index: number,
     field: keyof PropertyData,
-    value: number
+    value: number,
   ) => {
     const updatedProperties = [...properties];
     updatedProperties[index] = {
@@ -250,6 +697,20 @@ export default function PortfolioPage() {
     updatedProperties[index] = recalculateProperty(updatedProperties[index]);
     setProperties(updatedProperties);
     setIsModified(true);
+  };
+
+  const updateTemporaryProperty = (
+    index: number,
+    field: keyof PropertyData,
+    value: number,
+  ) => {
+    const updatedProperties = [...temporaryProperties];
+    updatedProperties[index] = {
+      ...updatedProperties[index],
+      [field]: value,
+    };
+    updatedProperties[index] = recalculateProperty(updatedProperties[index]);
+    setTemporaryProperties(updatedProperties);
   };
 
   const addNewProperty = () => {
@@ -419,18 +880,20 @@ export default function PortfolioPage() {
 
   const finalFilteredProperties = applyFilters(filteredProperties);
   const finalFilteredOriginalProperties = applyFilters(
-    filteredOriginalProperties
+    filteredOriginalProperties,
   );
 
-  const totals = calculatePortfolioTotals(finalFilteredProperties);
-  const baselineTotals = calculatePortfolioTotals(
-    finalFilteredOriginalProperties
-  );
+  // Combine actual properties with temporary properties for calculations
+  const allProperties = [...finalFilteredProperties, ...temporaryProperties];
+  const allOriginalProperties = finalFilteredOriginalProperties;
 
-  const metrics = calculatePortfolioMetrics(finalFilteredProperties, totals);
+  const totals = calculatePortfolioTotals(allProperties);
+  const baselineTotals = calculatePortfolioTotals(allOriginalProperties);
+
+  const metrics = calculatePortfolioMetrics(allProperties, totals);
   const baselineMetrics = calculatePortfolioMetrics(
-    finalFilteredOriginalProperties,
-    baselineTotals
+    allOriginalProperties,
+    baselineTotals,
   );
 
   const {
@@ -537,8 +1000,8 @@ export default function PortfolioPage() {
     const formatValue = isCount
       ? (v: number) => v.toFixed(0)
       : isPercent
-      ? formatCompactPercent
-      : formatCompactCurrency;
+        ? formatCompactPercent
+        : formatCompactCurrency;
 
     const formattedCurrent = suffix
       ? `${safeValue.toFixed(isCount ? 0 : 2)}${suffix}`
@@ -569,8 +1032,8 @@ export default function PortfolioPage() {
               isExpense
                 ? getExpenseColor()
                 : colorize
-                ? getValueColor(safeValue)
-                : ""
+                  ? getValueColor(safeValue)
+                  : ""
             }`}
           >
             {formattedCurrent}
@@ -595,6 +1058,8 @@ export default function PortfolioPage() {
     isPercent = false,
     isExpense = false,
     isIncome = false,
+    displayHasChangedOverride = true,
+    updateProperty: updatePropertyFunc,
   }: {
     value: number;
     index: number;
@@ -602,19 +1067,27 @@ export default function PortfolioPage() {
     isPercent?: boolean;
     isExpense?: boolean;
     isIncome?: boolean;
+    displayHasChangedOverride?: boolean;
+    updateProperty?: (
+      index: number,
+      field: keyof PropertyData,
+      value: number,
+    ) => void;
   }) => {
     const [isEditing, setIsEditing] = useState(false);
     const safeValue = value ?? 0;
     const [inputValue, setInputValue] = useState(safeValue.toString());
     const originalProperty = originalProperties[index];
     const baselineValue = originalProperty
-      ? (originalProperty[field] as number) ?? 0
+      ? ((originalProperty[field] as number) ?? 0)
       : 0;
     const hasChanged = Math.abs(safeValue - baselineValue) >= 0.01;
 
     const handleBlur = () => {
       const numValue = Number.parseFloat(inputValue) || 0;
-      updateProperty(index, field, numValue);
+      // Use provided updateProperty function or fall back to default
+      const updateFunc = updatePropertyFunc || updateProperty;
+      updateFunc(index, field, numValue);
       setIsEditing(false);
     };
 
@@ -651,8 +1124,8 @@ export default function PortfolioPage() {
               isExpense
                 ? "text-red-600 dark:text-red-400"
                 : isIncome
-                ? "text-green-600 dark:text-green-400"
-                : "text-muted-foreground"
+                  ? "text-green-600 dark:text-green-400"
+                  : "text-muted-foreground"
             } font-medium text-xs`}
           >
             {isPercent
@@ -664,12 +1137,12 @@ export default function PortfolioPage() {
               isExpense
                 ? "text-red-600 dark:text-red-400"
                 : isIncome
-                ? "text-green-600 dark:text-green-400"
-                : "text-muted-foreground"
+                  ? "text-green-600 dark:text-green-400"
+                  : "text-muted-foreground"
             } opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0`}
           />
         </div>
-        {hasChanged && (
+        {displayHasChangedOverride && hasChanged && (
           <ChangeIndicator
             current={safeValue}
             baseline={baselineValue}
@@ -686,12 +1159,14 @@ export default function PortfolioPage() {
     isPercent = false,
     colorize = false,
     isExpense = false,
+    displayHasChangedOverride = true,
   }: {
     value: number;
     baselineValue: number;
     isPercent?: boolean;
     colorize?: boolean;
     isExpense?: boolean;
+    displayHasChangedOverride?: boolean;
   }) => {
     const safeValue = value ?? 0;
     const safeBaselineValue = baselineValue ?? 0;
@@ -705,8 +1180,8 @@ export default function PortfolioPage() {
               isExpense
                 ? getExpenseColor()
                 : colorize
-                ? getValueColor(safeValue)
-                : "text-muted-foreground"
+                  ? getValueColor(safeValue)
+                  : "text-muted-foreground"
             } font-medium text-xs`}
           >
             {isPercent
@@ -715,7 +1190,7 @@ export default function PortfolioPage() {
           </span>
           <Lock className="h-2.5 w-2.5 text-muted-foreground/50 flex-shrink-0" />
         </div>
-        {hasChanged && (
+        {displayHasChangedOverride && hasChanged && (
           <ChangeIndicator
             current={safeValue}
             baseline={safeBaselineValue}
@@ -801,16 +1276,17 @@ export default function PortfolioPage() {
     );
   };
 
-  const hasNewProperties = properties.some((p) => p.isNew);
+  const hasNewProperties =
+    properties.some((p) => p.isNew) || temporaryProperties.length > 0;
 
   // Get unique states from all properties
   const uniqueStates = Array.from(
-    new Set(properties.map((p) => p.state).filter(Boolean))
+    new Set(properties.map((p) => p.state).filter(Boolean)),
   ).sort() as string[];
 
   const toggleState = (state: string) => {
     setSelectedStates((prev) =>
-      prev.includes(state) ? prev.filter((s) => s !== state) : [...prev, state]
+      prev.includes(state) ? prev.filter((s) => s !== state) : [...prev, state],
     );
   };
 
@@ -825,6 +1301,31 @@ export default function PortfolioPage() {
         <div className="hidden md:flex items-center justify-between">
           <h1 className="text-2xl font-bold tracking-tight">Portfolio</h1>
           <div className="flex items-center gap-2">
+            <Button
+              onClick={() => setShowInterestedDialog(true)}
+              variant="outline"
+              size="sm"
+              className="gap-1.5 h-8 text-xs px-3 bg-transparent hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent"
+            >
+              <Star className="h-3.5 w-3.5" />
+              Interested Listings
+              {temporaryProperties.length > 0 && (
+                <Badge variant="secondary" className="ml-1 h-4 px-1.5">
+                  {temporaryProperties.length}
+                </Badge>
+              )}
+            </Button>
+            {temporaryProperties.length > 0 && (
+              <Button
+                onClick={resetTemporaryProperties}
+                variant="outline"
+                size="sm"
+                className="gap-1.5 h-8 text-xs px-3 hover:bg-destructive hover:text-destructive-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+                Clear Temporary
+              </Button>
+            )}
             <Button
               onClick={addNewProperty}
               variant="outline"
@@ -871,8 +1372,8 @@ export default function PortfolioPage() {
                   totals.noiMonthly > 0
                     ? "text-green-600 dark:text-green-400"
                     : totals.noiMonthly < 0
-                    ? "text-red-600 dark:text-red-400"
-                    : ""
+                      ? "text-red-600 dark:text-red-400"
+                      : ""
                 }`}
               >
                 {formatCompactCurrency(totals.noiMonthly)}
@@ -892,8 +1393,8 @@ export default function PortfolioPage() {
                   totals.noiYearly > 0
                     ? "text-green-600 dark:text-green-400"
                     : totals.noiYearly < 0
-                    ? "text-red-600 dark:text-red-400"
-                    : ""
+                      ? "text-red-600 dark:text-red-400"
+                      : ""
                 }`}
               >
                 {formatCompactCurrency(totals.noiYearly)}
@@ -926,8 +1427,8 @@ export default function PortfolioPage() {
                   totals.cashflowMonthly > 0
                     ? "text-green-600 dark:text-green-400"
                     : totals.cashflowMonthly < 0
-                    ? "text-red-600 dark:text-red-400"
-                    : ""
+                      ? "text-red-600 dark:text-red-400"
+                      : ""
                 }`}
               >
                 {formatCompactCurrency(totals.cashflowMonthly)}
@@ -947,8 +1448,8 @@ export default function PortfolioPage() {
                   totals.cashflowYearly > 0
                     ? "text-green-600 dark:text-green-400"
                     : totals.cashflowYearly < 0
-                    ? "text-red-600 dark:text-red-400"
-                    : ""
+                      ? "text-red-600 dark:text-red-400"
+                      : ""
                 }`}
               >
                 {formatCompactCurrency(totals.cashflowYearly)}
@@ -968,8 +1469,8 @@ export default function PortfolioPage() {
                   cocReturn > 0
                     ? "text-green-600 dark:text-green-400"
                     : cocReturn < 0
-                    ? "text-red-600 dark:text-red-400"
-                    : ""
+                      ? "text-red-600 dark:text-red-400"
+                      : ""
                 }`}
               >
                 {formatCompactPercent(cocReturn)}
@@ -1396,8 +1897,8 @@ export default function PortfolioPage() {
                                 dscr >= 1.25
                                   ? "text-green-500"
                                   : dscr >= 1.0
-                                  ? "text-yellow-500"
-                                  : "text-red-500"
+                                    ? "text-yellow-500"
+                                    : "text-red-500"
                               }`}
                             >
                               {dscr > 0 ? `${dscr.toFixed(2)}x` : "N/A"}
@@ -1500,6 +2001,15 @@ export default function PortfolioPage() {
                       <Lock className="h-3 w-3" />
                       <span>Calculated</span>
                     </div>
+                    {temporaryProperties.length > 0 && (
+                      <div className="flex items-center gap-0.5 ml-auto">
+                        <Star className="h-3 w-3 text-yellow-500" />
+                        <span className="text-blue-600 dark:text-blue-400 font-semibold">
+                          {temporaryProperties.length} Temporary Listing
+                          {temporaryProperties.length !== 1 ? "s" : ""}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex-1 min-h-0 overflow-auto">
@@ -1830,6 +2340,197 @@ export default function PortfolioPage() {
                               </tr>
                             );
                           })}
+
+                          {/* Temporary Properties from Interested Listings */}
+                          {temporaryProperties.map((property, tempIndex) => {
+                            return (
+                              <tr
+                                key={`temp-${tempIndex}`}
+                                className="border-b border-border/50 hover:bg-muted/30 transition-colors bg-blue-50 dark:bg-blue-950/20"
+                              >
+                                {hasNewProperties && (
+                                  <td className="py-0 px-0">
+                                    <Button
+                                      onClick={() =>
+                                        removeTemporaryProperty(tempIndex)
+                                      }
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-4 w-4 p-0 hover:bg-destructive/10 hover:text-destructive"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </Button>
+                                  </td>
+                                )}
+                                <td className="py-0 px-0.5 font-medium text-xs">
+                                  <div className="flex items-center gap-1 min-w-[150px] max-w-[250px]">
+                                    <span
+                                      className="truncate flex-1"
+                                      title={property.address}
+                                    >
+                                      {property.address}
+                                    </span>
+                                    <Badge
+                                      variant="secondary"
+                                      className="text-[10px] px-1 py-0 h-4 flex-shrink-0 bg-blue-500 text-white"
+                                    >
+                                      TEMP
+                                    </Badge>
+                                    {property.state && (
+                                      <Badge
+                                        variant="secondary"
+                                        className="text-[10px] px-1 py-0 h-4 flex-shrink-0"
+                                      >
+                                        {property.state}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="text-right py-0 px-0.5 whitespace-nowrap">
+                                  <EditableCell
+                                    value={property.marketValue}
+                                    index={tempIndex}
+                                    field="marketValue"
+                                    displayHasChangedOverride={false}
+                                    updateProperty={(idx, field, value) =>
+                                      updateTemporaryProperty(idx, field, value)
+                                    }
+                                  />
+                                </td>
+                                <td className="text-right py-0 px-0.5 whitespace-nowrap">
+                                  <ReadOnlyCell
+                                    value={property.equity}
+                                    baselineValue={0}
+                                    displayHasChangedOverride={false}
+                                  />
+                                </td>
+                                <td className="text-right py-0 px-0.5 whitespace-nowrap">
+                                  <EditableCell
+                                    value={property.debt}
+                                    index={tempIndex}
+                                    field="debt"
+                                    displayHasChangedOverride={false}
+                                    updateProperty={(idx, field, value) =>
+                                      updateTemporaryProperty(idx, field, value)
+                                    }
+                                  />
+                                </td>
+                                <td className="text-right py-0 px-0.5 whitespace-nowrap">
+                                  <ReadOnlyCell
+                                    value={property.equityPercent}
+                                    baselineValue={0}
+                                    isPercent
+                                    displayHasChangedOverride={false}
+                                  />
+                                </td>
+                                <td className="text-right py-0 px-0.5 whitespace-nowrap">
+                                  <EditableCell
+                                    value={property.rent}
+                                    index={tempIndex}
+                                    field="rent"
+                                    isIncome
+                                    displayHasChangedOverride={false}
+                                    updateProperty={(idx, field, value) =>
+                                      updateTemporaryProperty(idx, field, value)
+                                    }
+                                  />
+                                </td>
+                                <td className="text-right py-0 px-0.5 whitespace-nowrap">
+                                  <EditableCell
+                                    value={property.hoa}
+                                    index={tempIndex}
+                                    field="hoa"
+                                    isExpense
+                                    displayHasChangedOverride={false}
+                                    updateProperty={(idx, field, value) =>
+                                      updateTemporaryProperty(idx, field, value)
+                                    }
+                                  />
+                                </td>
+                                <td className="text-right py-0 px-0.5 whitespace-nowrap">
+                                  <EditableCell
+                                    value={property.reTax}
+                                    index={tempIndex}
+                                    field="reTax"
+                                    isExpense
+                                    displayHasChangedOverride={false}
+                                    updateProperty={(idx, field, value) =>
+                                      updateTemporaryProperty(idx, field, value)
+                                    }
+                                  />
+                                </td>
+                                <td className="text-right py-0 px-0.5 whitespace-nowrap">
+                                  <EditableCell
+                                    value={property.insurance}
+                                    index={tempIndex}
+                                    field="insurance"
+                                    isExpense
+                                    displayHasChangedOverride={false}
+                                    updateProperty={(idx, field, value) =>
+                                      updateTemporaryProperty(idx, field, value)
+                                    }
+                                  />
+                                </td>
+                                <td className="text-right py-0 px-0.5 whitespace-nowrap">
+                                  <EditableCell
+                                    value={property.otherExpenses}
+                                    index={tempIndex}
+                                    field="otherExpenses"
+                                    isExpense
+                                    displayHasChangedOverride={false}
+                                    updateProperty={(idx, field, value) =>
+                                      updateTemporaryProperty(idx, field, value)
+                                    }
+                                  />
+                                </td>
+                                <td className="text-right py-0 px-0.5 whitespace-nowrap">
+                                  <EditableCell
+                                    value={property.interestRate}
+                                    index={tempIndex}
+                                    field="interestRate"
+                                    isPercent
+                                    displayHasChangedOverride={false}
+                                    updateProperty={(idx, field, value) =>
+                                      updateTemporaryProperty(idx, field, value)
+                                    }
+                                  />
+                                </td>
+                                <td className="text-right py-0 px-0.5 whitespace-nowrap">
+                                  <ReadOnlyCell
+                                    value={property.debtService}
+                                    baselineValue={0}
+                                    isExpense
+                                    displayHasChangedOverride={false}
+                                  />
+                                </td>
+                                <td className="text-right py-0 px-0.5 whitespace-nowrap">
+                                  <ReadOnlyCell
+                                    value={property.noiMonthly}
+                                    baselineValue={0}
+                                    colorize
+                                    displayHasChangedOverride={false}
+                                  />
+                                </td>
+                                <td className="text-right py-0 px-0.5 whitespace-nowrap">
+                                  <ReadOnlyCell
+                                    value={property.cashflow}
+                                    baselineValue={0}
+                                    colorize
+                                    displayHasChangedOverride={false}
+                                  />
+                                </td>
+                                <td className="text-right py-0 px-0.5 whitespace-nowrap">
+                                  <ReadOnlyCell
+                                    value={property.returnPercent}
+                                    baselineValue={0}
+                                    isPercent
+                                    colorize
+                                    displayHasChangedOverride={false}
+                                  />
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -1840,6 +2541,620 @@ export default function PortfolioPage() {
           </Card>
         </TooltipProvider>
       </main>
+
+      {/* Interested Listings Dialog */}
+      <Dialog
+        open={showInterestedDialog}
+        onOpenChange={setShowInterestedDialog}
+      >
+        <DialogContent className="max-w-[98vw] lg:max-w-[95vw] xl:max-w-[92vw] h-[90vh] flex flex-col overflow-hidden">
+          <DialogHeader className="flex-shrink-0">
+            <DialogTitle>Add Interested Listings to Portfolio</DialogTitle>
+            <DialogDescription>
+              Select listings to temporarily add to your portfolio and see how
+              they affect your metrics. These will not be saved to your actual
+              portfolio.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 flex-1 overflow-y-auto min-h-0">
+            {/* Financing Strategy Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">
+                  Financing Strategy (30-Year Fixed)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Down Payment Type</Label>
+                    <Select
+                      value={financingStrategy.downPaymentType}
+                      onValueChange={(value: "percent" | "amount") => {
+                        setFinancingStrategy({
+                          ...financingStrategy,
+                          downPaymentType: value,
+                        });
+                        // Sync input values when switching modes
+                        if (value === "percent") {
+                          setDownPaymentPercentInput(
+                            financingStrategy.downPaymentPercent.toString(),
+                          );
+                        } else {
+                          // Format the amount as currency when switching to amount mode
+                          const amount =
+                            financingStrategy.downPaymentAmount || 100000;
+                          setDownPaymentAmountInput(
+                            ensureDecimalPadding(amount.toString()),
+                          );
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="percent">Percentage</SelectItem>
+                        <SelectItem value="amount">Cash Amount</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {financingStrategy.downPaymentType === "percent" ? (
+                    <div className="space-y-2">
+                      <Label>Down Payment %</Label>
+                      <Input
+                        type="number"
+                        value={downPaymentPercentInput}
+                        onChange={(e) =>
+                          setDownPaymentPercentInput(e.target.value)
+                        }
+                        onBlur={(e) =>
+                          setFinancingStrategy({
+                            ...financingStrategy,
+                            downPaymentPercent: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                        min={0}
+                        max={100}
+                        step={0.5}
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <Label>Down Payment Amount</Label>
+                      <Input
+                        type="text"
+                        value={downPaymentAmountInput}
+                        onChange={(e) =>
+                          setDownPaymentAmountInput(
+                            formatCurrencyInput(e.target.value),
+                          )
+                        }
+                        onBlur={(e) => {
+                          const formatted = ensureDecimalPadding(
+                            e.target.value,
+                          );
+                          setDownPaymentAmountInput(formatted);
+                          setFinancingStrategy({
+                            ...financingStrategy,
+                            downPaymentAmount:
+                              parseCurrencyToNumber(formatted) || 0,
+                          });
+                        }}
+                        placeholder="$200,000.00"
+                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label>Interest Rate</Label>
+                    <Input
+                      type="text"
+                      value={interestRateInput}
+                      onChange={(e) =>
+                        setInterestRateInput(
+                          formatPercentageInput(e.target.value),
+                        )
+                      }
+                      onBlur={(e) => {
+                        const formatted = ensurePercentagePadding(
+                          e.target.value,
+                        );
+                        setInterestRateInput(formatted);
+                        setFinancingStrategy({
+                          ...financingStrategy,
+                          interestRate: parsePercentageToNumber(formatted) || 0,
+                        });
+                      }}
+                      placeholder="6.125%"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Listings List */}
+            {interestedListings.length === 0 && !loadingInterestedListings ? (
+              <div className="text-center py-8">
+                <Star className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">
+                  No interested listings found. Mark listings as interested in
+                  the Market Listings page.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {loadingInterestedListings &&
+                  interestedListings.length === 0 && (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground">
+                        Loading interested listings...
+                      </p>
+                    </div>
+                  )}
+                {interestedListings.length > 0 && (
+                  <>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-xs font-semibold text-muted-foreground">
+                        {interestedListings.length} Interested Listing
+                        {interestedListings.length !== 1 ? "s" : ""}
+                      </h3>
+                      {loadingInterestedListings && (
+                        <span className="text-[10px] text-muted-foreground animate-pulse">
+                          Recalculating...
+                        </span>
+                      )}
+                    </div>
+                    <Card>
+                      <CardContent className="p-0">
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="w-8 p-2"></TableHead>
+                                <TableHead className="p-2 min-w-[140px]">
+                                  Address / Location
+                                </TableHead>
+                                <TableHead className="text-right p-2">
+                                  <div className="text-xs">Price</div>
+                                </TableHead>
+                                <TableHead className="text-right p-2 w-24">
+                                  <div className="text-xs">Down / %</div>
+                                </TableHead>
+                                <TableHead className="text-center p-2 w-12">
+                                  <div className="text-xs">Bd/Ba</div>
+                                </TableHead>
+                                <TableHead className="text-right p-2 w-16">
+                                  <div className="text-xs">Sqft</div>
+                                </TableHead>
+                                <TableHead className="text-center p-2 w-12">
+                                  <div className="text-xs">DOM</div>
+                                </TableHead>
+                                {/* Analysis Sections */}
+                                <TableHead className="text-right p-2 w-20 bg-blue-50 dark:bg-blue-950/20">
+                                  <div className="text-xs">Rent</div>
+                                </TableHead>
+                                <TableHead className="text-center p-2 w-12 bg-purple-50 dark:bg-purple-950/20">
+                                  <div className="text-xs">1%</div>
+                                </TableHead>
+                                <TableHead className="text-center p-2 w-12 bg-purple-50 dark:bg-purple-950/20">
+                                  <div className="text-xs">2%</div>
+                                </TableHead>
+                                <TableHead className="text-center p-2 w-12 bg-purple-50 dark:bg-purple-950/20">
+                                  <div className="text-xs">50%</div>
+                                </TableHead>
+                                <TableHead className="text-right p-2 w-20 bg-green-50 dark:bg-green-950/20">
+                                  <div className="text-xs">CF/mo</div>
+                                </TableHead>
+                                <TableHead className="text-right p-2 w-16 bg-green-50 dark:bg-green-950/20">
+                                  <div className="text-xs">Cap%</div>
+                                </TableHead>
+                                <TableHead className="text-right p-2 w-16 bg-green-50 dark:bg-green-950/20">
+                                  <div className="text-xs">CoC%</div>
+                                </TableHead>
+                                <TableHead className="text-right p-2 w-16 bg-green-50 dark:bg-green-950/20">
+                                  <div className="text-xs">P/R</div>
+                                </TableHead>
+                                <TableHead className="text-right p-2 w-16 bg-green-50 dark:bg-green-950/20">
+                                  <div className="text-xs">DSCR</div>
+                                </TableHead>
+                                <TableHead className="text-right p-2 w-16 bg-green-50 dark:bg-green-950/20">
+                                  <div className="text-xs">BER%</div>
+                                </TableHead>
+                                <TableHead className="text-right p-2 w-16 bg-green-50 dark:bg-green-950/20">
+                                  <div className="text-xs">OER%</div>
+                                </TableHead>
+                                <TableHead className="p-2 w-32 text-center">
+                                  <div className="text-xs">Actions</div>
+                                </TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {interestedListings.map((listing) => {
+                                const isAdded = temporaryProperties.some(
+                                  (p) =>
+                                    p.address ===
+                                    (listing.address1 || listing.address),
+                                );
+
+                                return (
+                                  <TableRow
+                                    key={listing.id}
+                                    className={
+                                      isAdded
+                                        ? "bg-green-50 dark:bg-green-950/20"
+                                        : ""
+                                    }
+                                  >
+                                    <TableCell className="p-2">
+                                      {isAdded && (
+                                        <Badge
+                                          variant="secondary"
+                                          className="text-[10px] h-4 px-1.5"
+                                        >
+                                          ✓
+                                        </Badge>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="p-2">
+                                      <div className="flex items-center gap-2 mb-0.5">
+                                        {listing.sourceUrl && (
+                                          <Badge
+                                            className={`${getSourceColor(
+                                              listing.source,
+                                            )} text-white text-[10px] h-4 px-1.5 cursor-pointer shrink-0`}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              window.open(
+                                                listing.sourceUrl,
+                                                "_blank",
+                                              );
+                                            }}
+                                          >
+                                            {listing.source}
+                                          </Badge>
+                                        )}
+                                        {listing.propertyType && (
+                                          <Badge
+                                            variant="outline"
+                                            className="text-[10px] h-4 px-1.5 shrink-0"
+                                          >
+                                            {listing.propertyType}
+                                          </Badge>
+                                        )}
+                                        <div className="text-xs font-medium leading-tight truncate">
+                                          {listing.address1 || listing.address}
+                                        </div>
+                                      </div>
+                                      <div className="text-xs text-muted-foreground leading-tight">
+                                        {listing.city}, {listing.state}{" "}
+                                        {listing.zipCode}
+                                      </div>
+                                      <div className="text-[10px] text-muted-foreground/70 leading-tight mt-0.5 flex items-center gap-1">
+                                        {isListingStale(listing.updatedAt) && (
+                                          <TooltipProvider>
+                                            <Tooltip>
+                                              <TooltipTrigger asChild>
+                                                <AlertTriangle className="h-3 w-3 text-amber-500" />
+                                              </TooltipTrigger>
+                                              <TooltipContent>
+                                                <p>
+                                                  This listing is older than 1
+                                                  day and may have changed
+                                                  status
+                                                </p>
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          </TooltipProvider>
+                                        )}
+                                        Updated{" "}
+                                        {formatTimeAgo(listing.updatedAt)}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-right p-2">
+                                      <div className="text-xs font-semibold">
+                                        {formatCurrency(listing.price)}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-right p-2">
+                                      <div className="text-xs text-muted-foreground">
+                                        {(() => {
+                                          const { amount, percent } =
+                                            getDownPaymentInfo(
+                                              listing.price || 0,
+                                            );
+                                          return (
+                                            <>
+                                              <div className="font-medium">
+                                                {formatCurrency(amount)}
+                                              </div>
+                                              <div className="text-[10px]">
+                                                ({percent.toFixed(1)}%)
+                                              </div>
+                                            </>
+                                          );
+                                        })()}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-center p-2">
+                                      <div className="text-xs">
+                                        {listing.bedrooms || "-"}/
+                                        {listing.bathrooms || "-"}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-right p-2">
+                                      <div className="text-xs">
+                                        {listing.squareFeet
+                                          ? listing.squareFeet.toLocaleString()
+                                          : "-"}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-center p-2">
+                                      <div className="text-xs">
+                                        {listing.daysOnMarket !== undefined
+                                          ? listing.daysOnMarket
+                                          : "-"}
+                                      </div>
+                                    </TableCell>
+
+                                    {/* Rental Income Analysis */}
+                                    <TableCell className="text-right p-2 bg-blue-50 dark:bg-blue-950/20">
+                                      {listing.calculatedExpectedRent ? (
+                                        <div className="text-xs font-medium">
+                                          {formatCurrency(
+                                            listing.calculatedExpectedRent,
+                                          )}
+                                        </div>
+                                      ) : (
+                                        <span className="text-muted-foreground text-xs">
+                                          -
+                                        </span>
+                                      )}
+                                    </TableCell>
+
+                                    {/* Investment Rules Analysis */}
+                                    <TableCell className="text-center p-2 bg-purple-50 dark:bg-purple-950/20">
+                                      {listing.calculatedMeets1Percent !==
+                                      undefined ? (
+                                        <Badge
+                                          className={
+                                            listing.calculatedMeets1Percent
+                                              ? "bg-green-600 hover:bg-green-700 text-xs h-5 px-2"
+                                              : "bg-red-600 hover:bg-red-700 text-xs h-5 px-2"
+                                          }
+                                        >
+                                          {listing.calculatedMeets1Percent
+                                            ? "✓"
+                                            : "✗"}
+                                        </Badge>
+                                      ) : (
+                                        <span className="text-muted-foreground text-xs">
+                                          -
+                                        </span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-center p-2 bg-purple-50 dark:bg-purple-950/20">
+                                      {listing.calculatedMeets2Percent !==
+                                      undefined ? (
+                                        <Badge
+                                          className={
+                                            listing.calculatedMeets2Percent
+                                              ? "bg-green-600 hover:bg-green-700 text-xs h-5 px-2"
+                                              : "bg-red-600 hover:bg-red-700 text-xs h-5 px-2"
+                                          }
+                                        >
+                                          {listing.calculatedMeets2Percent
+                                            ? "✓"
+                                            : "✗"}
+                                        </Badge>
+                                      ) : (
+                                        <span className="text-muted-foreground text-xs">
+                                          -
+                                        </span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-center p-2 bg-purple-50 dark:bg-purple-950/20">
+                                      {listing.calculatedMeets50Percent !==
+                                      undefined ? (
+                                        <Badge
+                                          className={
+                                            listing.calculatedMeets50Percent
+                                              ? "bg-green-600 hover:bg-green-700 text-xs h-5 px-2"
+                                              : "bg-red-600 hover:bg-red-700 text-xs h-5 px-2"
+                                          }
+                                        >
+                                          {listing.calculatedMeets50Percent
+                                            ? "✓"
+                                            : "✗"}
+                                        </Badge>
+                                      ) : (
+                                        <span className="text-muted-foreground text-xs">
+                                          -
+                                        </span>
+                                      )}
+                                    </TableCell>
+
+                                    {/* Returns Analysis */}
+                                    <TableCell className="text-right p-2 bg-green-50 dark:bg-green-950/20">
+                                      {listing.calculatedMonthlyCashflow !==
+                                      undefined ? (
+                                        <Badge
+                                          className={`${
+                                            getCashflowColor(
+                                              listing.calculatedMonthlyCashflow,
+                                            ).className
+                                          } text-xs h-5 px-1.5`}
+                                        >
+                                          {listing.calculatedMonthlyCashflow >=
+                                          0
+                                            ? "+"
+                                            : "-"}
+                                          $
+                                          {Math.abs(
+                                            listing.calculatedMonthlyCashflow,
+                                          ).toFixed(0)}
+                                        </Badge>
+                                      ) : (
+                                        <span className="text-muted-foreground text-xs">
+                                          -
+                                        </span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-right p-2 bg-green-50 dark:bg-green-950/20">
+                                      {listing.calculatedCapRate !==
+                                      undefined ? (
+                                        <Badge
+                                          className={`${
+                                            getCapRateColor(
+                                              listing.calculatedCapRate,
+                                            ).className
+                                          } text-xs h-5 px-1.5`}
+                                        >
+                                          {listing.calculatedCapRate.toFixed(1)}
+                                        </Badge>
+                                      ) : (
+                                        <span className="text-muted-foreground text-xs">
+                                          -
+                                        </span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-right p-2 bg-green-50 dark:bg-green-950/20">
+                                      {listing.calculatedCashOnCash !==
+                                      undefined ? (
+                                        <Badge
+                                          className={`${
+                                            getCocColor(
+                                              listing.calculatedCashOnCash,
+                                            ).className
+                                          } text-xs h-5 px-1.5`}
+                                        >
+                                          {listing.calculatedCashOnCash.toFixed(
+                                            1,
+                                          )}
+                                        </Badge>
+                                      ) : (
+                                        <span className="text-muted-foreground text-xs">
+                                          -
+                                        </span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-right p-2 bg-green-50 dark:bg-green-950/20">
+                                      {listing.calculatedPriceToRent !==
+                                      undefined ? (
+                                        <Badge
+                                          className={`${
+                                            getPriceToRentColor(
+                                              listing.calculatedPriceToRent,
+                                            ).className
+                                          } text-xs h-5 px-1.5`}
+                                        >
+                                          {listing.calculatedPriceToRent.toFixed(
+                                            0,
+                                          )}
+                                        </Badge>
+                                      ) : (
+                                        <span className="text-muted-foreground text-xs">
+                                          -
+                                        </span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-right p-2 bg-green-50 dark:bg-green-950/20">
+                                      {listing.calculatedDSCR !== undefined ? (
+                                        <Badge
+                                          className={`${
+                                            getDSCRColor(listing.calculatedDSCR)
+                                              .className
+                                          } text-xs h-5 px-1.5`}
+                                        >
+                                          {listing.calculatedDSCR.toFixed(2)}
+                                        </Badge>
+                                      ) : (
+                                        <span className="text-muted-foreground text-xs">
+                                          -
+                                        </span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-right p-2 bg-green-50 dark:bg-green-950/20">
+                                      {listing.calculatedBreakEvenRatio !==
+                                      undefined ? (
+                                        <Badge
+                                          className={`${
+                                            getBreakEvenColor(
+                                              listing.calculatedBreakEvenRatio,
+                                            ).className
+                                          } text-xs h-5 px-1.5`}
+                                        >
+                                          {listing.calculatedBreakEvenRatio.toFixed(
+                                            0,
+                                          )}
+                                        </Badge>
+                                      ) : (
+                                        <span className="text-muted-foreground text-xs">
+                                          -
+                                        </span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="text-right p-2 bg-green-50 dark:bg-green-950/20">
+                                      {listing.calculatedOER !== undefined ? (
+                                        <Badge
+                                          className={`${
+                                            getOERColor(listing.calculatedOER)
+                                              .className
+                                          } text-xs h-5 px-1.5`}
+                                        >
+                                          {listing.calculatedOER.toFixed(0)}
+                                        </Badge>
+                                      ) : (
+                                        <span className="text-muted-foreground text-xs">
+                                          -
+                                        </span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="p-2">
+                                      <div className="flex items-center gap-1 justify-center">
+                                        <Button
+                                          onClick={() =>
+                                            addListingToPortfolio(listing)
+                                          }
+                                          disabled={
+                                            isAdded ||
+                                            !listing.price ||
+                                            !listing.calculatedExpectedRent
+                                          }
+                                          size="sm"
+                                          className="h-6 px-2 text-xs shrink-0"
+                                        >
+                                          {isAdded ? "Added" : "Add"}
+                                        </Button>
+                                        <Button
+                                          onClick={() =>
+                                            removeInterestedListing(listing.id)
+                                          }
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-6 w-6 p-0 text-xs shrink-0 text-muted-foreground hover:text-destructive"
+                                        >
+                                          <X className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

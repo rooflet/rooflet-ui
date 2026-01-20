@@ -5,7 +5,7 @@ import type React from "react";
 import { LoadingScreen } from "@/components/loading-screen";
 import { ROUTES } from "@/lib/constants/routes";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { checkAuth } from "@/store/slices/authSlice";
+import { checkAuth, clearAuth } from "@/store/slices/authSlice";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -18,6 +18,26 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAppSelector((state) => state.auth);
   const [isChecking, setIsChecking] = useState(true);
   const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
+
+  // Listen for API authentication errors
+  useEffect(() => {
+    const handleAuthError = (event: Event) => {
+      const customEvent = event as CustomEvent<{ status: number }>;
+      if (
+        customEvent.detail.status === 401 ||
+        customEvent.detail.status === 403
+      ) {
+        // Clear auth state and redirect to login
+        dispatch(clearAuth());
+        router.push(ROUTES.LOGIN);
+      }
+    };
+
+    window.addEventListener("api-auth-error", handleAuthError);
+    return () => {
+      window.removeEventListener("api-auth-error", handleAuthError);
+    };
+  }, [dispatch, router]);
 
   useEffect(() => {
     const checkAuthentication = async () => {
