@@ -287,7 +287,7 @@ const getOERColor = (oer?: number) => {
 export default function PortfolioPage() {
   const { toast } = useToast();
   const { refreshKey, activePortfolioId } = useAppSelector(
-    (state) => state.portfolio
+    (state) => state.portfolio,
   );
   const STORAGE_KEY = `portfolio-modified-properties-${activePortfolioId}`;
   const FILTERS_STORAGE_KEY = `portfolio-filters-${activePortfolioId}`;
@@ -308,7 +308,7 @@ export default function PortfolioPage() {
   const savedFilters = loadSavedFilters();
 
   const [originalProperties, setOriginalProperties] = useState<PropertyData[]>(
-    []
+    [],
   );
   const [properties, setProperties] = useState<PropertyData[]>([]);
   const [isModified, setIsModified] = useState(false);
@@ -316,19 +316,19 @@ export default function PortfolioPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [includeVacant, setIncludeVacant] = useState(
-    savedFilters?.includeVacant ?? true
+    savedFilters?.includeVacant ?? true,
   );
   const [selectedStates, setSelectedStates] = useState<string[]>(
-    savedFilters?.selectedStates ?? []
+    savedFilters?.selectedStates ?? [],
   );
   const [cashFlowFilter, setCashFlowFilter] = useState<string>(
-    savedFilters?.cashFlowFilter ?? "all"
+    savedFilters?.cashFlowFilter ?? "all",
   );
   const [debtFilter, setDebtFilter] = useState<string>(
-    savedFilters?.debtFilter ?? "all"
+    savedFilters?.debtFilter ?? "all",
   );
   const [minMarketValue, setMinMarketValue] = useState<number>(
-    savedFilters?.minMarketValue ?? 0
+    savedFilters?.minMarketValue ?? 0,
   );
   const [isFiltersOpen, setIsFiltersOpen] = useState(true);
 
@@ -349,7 +349,7 @@ export default function PortfolioPage() {
       downPaymentAmount: 100000,
       interestRate: 6.5,
       loanTermYears: 30,
-    }
+    },
   );
   // Local state for input values to avoid update lag
   const [downPaymentPercentInput, setDownPaymentPercentInput] = useState("20");
@@ -360,7 +360,7 @@ export default function PortfolioPage() {
   // Calculate max market value for slider
   const maxMarketValue = Math.max(
     ...properties.map((p) => p.marketValue ?? 0),
-    500000
+    500000,
   );
 
   // Check if any filters are active
@@ -407,11 +407,11 @@ export default function PortfolioPage() {
 
           try {
             const rentData = await marketListingsApi.getExpectedRent(
-              listing.zipCode
+              listing.zipCode,
             );
             if (rentData) {
               const expectedRentData = rentData.find(
-                (data) => data.bedrooms === listing.bedrooms
+                (data) => data.bedrooms === listing.bedrooms,
               );
               if (expectedRentData && listing.price) {
                 const expectedRent = expectedRentData.expectedRent;
@@ -421,30 +421,30 @@ export default function PortfolioPage() {
                   financingStrategy,
                   listing.hoaFee || 0,
                   estimateMonthlyPropertyTax(listing.price, listing.state),
-                  estimateMonthlyInsurance(listing.price)
+                  estimateMonthlyInsurance(listing.price),
                 );
 
                 // Calculate additional rules of thumb
                 const meets2Percent = meets2PercentRule(
                   expectedRent,
-                  listing.price
+                  listing.price,
                 );
                 const meets50Percent = meets50PercentRule(
                   expectedRent,
-                  metrics.monthlyMortgagePayment
+                  metrics.monthlyMortgagePayment,
                 );
                 const priceToRent = calculatePriceToRentRatio(
                   listing.price,
-                  expectedRent
+                  expectedRent,
                 );
                 const capRate = calculateCapRate(listing.price, expectedRent);
                 const dscr = calculateDSCR(
                   expectedRent,
-                  metrics.monthlyMortgagePayment
+                  metrics.monthlyMortgagePayment,
                 );
                 const breakEvenRatio = calculateBreakEvenRatio(
                   expectedRent,
-                  metrics.monthlyMortgagePayment
+                  metrics.monthlyMortgagePayment,
                 );
                 const oer = calculateOperatingExpenseRatio(expectedRent);
 
@@ -470,11 +470,11 @@ export default function PortfolioPage() {
             }
           } catch (error) {
             console.warn(
-              `Failed to calculate metrics for listing ${listing.id}`
+              `Failed to calculate metrics for listing ${listing.id}`,
             );
           }
           return listing;
-        })
+        }),
       );
 
       setInterestedListings(enrichedListings);
@@ -491,7 +491,7 @@ export default function PortfolioPage() {
   };
 
   const addListingToPortfolio = (
-    listing: MarketListingWithPreferenceResponse
+    listing: MarketListingWithPreferenceResponse,
   ) => {
     if (!listing.price || !listing.calculatedExpectedRent) {
       toast({
@@ -512,7 +512,7 @@ export default function PortfolioPage() {
 
     const monthlyPropertyTax = estimateMonthlyPropertyTax(
       listing.price,
-      listing.state
+      listing.state,
     );
     const monthlyInsurance = estimateMonthlyInsurance(listing.price);
 
@@ -624,7 +624,7 @@ export default function PortfolioPage() {
             });
             const totalRent = tenants.reduce(
               (sum, tenant) => sum + (tenant.monthlyRent ?? 0),
-              0
+              0,
             );
 
             const propertyData: PropertyData = {
@@ -647,7 +647,7 @@ export default function PortfolioPage() {
               returnPercent: 0,
             };
             return recalculateProperty(propertyData);
-          })
+          }),
         );
 
         setOriginalProperties(propertiesWithRent);
@@ -687,7 +687,7 @@ export default function PortfolioPage() {
   const updateProperty = (
     index: number,
     field: keyof PropertyData,
-    value: number
+    value: number,
   ) => {
     const updatedProperties = [...properties];
     updatedProperties[index] = {
@@ -866,7 +866,7 @@ export default function PortfolioPage() {
 
   const finalFilteredProperties = applyFilters(filteredProperties);
   const finalFilteredOriginalProperties = applyFilters(
-    filteredOriginalProperties
+    filteredOriginalProperties,
   );
 
   // Combine actual properties with temporary properties for calculations
@@ -879,7 +879,7 @@ export default function PortfolioPage() {
   const metrics = calculatePortfolioMetrics(allProperties, totals);
   const baselineMetrics = calculatePortfolioMetrics(
     allOriginalProperties,
-    baselineTotals
+    baselineTotals,
   );
 
   const {
@@ -986,8 +986,8 @@ export default function PortfolioPage() {
     const formatValue = isCount
       ? (v: number) => v.toFixed(0)
       : isPercent
-      ? formatCompactPercent
-      : formatCompactCurrency;
+        ? formatCompactPercent
+        : formatCompactCurrency;
 
     const formattedCurrent = suffix
       ? `${safeValue.toFixed(isCount ? 0 : 2)}${suffix}`
@@ -1018,8 +1018,8 @@ export default function PortfolioPage() {
               isExpense
                 ? getExpenseColor()
                 : colorize
-                ? getValueColor(safeValue)
-                : ""
+                  ? getValueColor(safeValue)
+                  : ""
             }`}
           >
             {formattedCurrent}
@@ -1059,7 +1059,7 @@ export default function PortfolioPage() {
     const [inputValue, setInputValue] = useState(safeValue.toString());
     const originalProperty = originalProperties[index];
     const baselineValue = originalProperty
-      ? (originalProperty[field] as number) ?? 0
+      ? ((originalProperty[field] as number) ?? 0)
       : 0;
     const hasChanged = Math.abs(safeValue - baselineValue) >= 0.01;
 
@@ -1102,8 +1102,8 @@ export default function PortfolioPage() {
               isExpense
                 ? "text-red-600 dark:text-red-400"
                 : isIncome
-                ? "text-green-600 dark:text-green-400"
-                : "text-muted-foreground"
+                  ? "text-green-600 dark:text-green-400"
+                  : "text-muted-foreground"
             } font-medium text-xs`}
           >
             {isPercent
@@ -1115,8 +1115,8 @@ export default function PortfolioPage() {
               isExpense
                 ? "text-red-600 dark:text-red-400"
                 : isIncome
-                ? "text-green-600 dark:text-green-400"
-                : "text-muted-foreground"
+                  ? "text-green-600 dark:text-green-400"
+                  : "text-muted-foreground"
             } opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0`}
           />
         </div>
@@ -1158,8 +1158,8 @@ export default function PortfolioPage() {
               isExpense
                 ? getExpenseColor()
                 : colorize
-                ? getValueColor(safeValue)
-                : "text-muted-foreground"
+                  ? getValueColor(safeValue)
+                  : "text-muted-foreground"
             } font-medium text-xs`}
           >
             {isPercent
@@ -1259,12 +1259,12 @@ export default function PortfolioPage() {
 
   // Get unique states from all properties
   const uniqueStates = Array.from(
-    new Set(properties.map((p) => p.state).filter(Boolean))
+    new Set(properties.map((p) => p.state).filter(Boolean)),
   ).sort() as string[];
 
   const toggleState = (state: string) => {
     setSelectedStates((prev) =>
-      prev.includes(state) ? prev.filter((s) => s !== state) : [...prev, state]
+      prev.includes(state) ? prev.filter((s) => s !== state) : [...prev, state],
     );
   };
 
@@ -1350,8 +1350,8 @@ export default function PortfolioPage() {
                   totals.noiMonthly > 0
                     ? "text-green-600 dark:text-green-400"
                     : totals.noiMonthly < 0
-                    ? "text-red-600 dark:text-red-400"
-                    : ""
+                      ? "text-red-600 dark:text-red-400"
+                      : ""
                 }`}
               >
                 {formatCompactCurrency(totals.noiMonthly)}
@@ -1371,8 +1371,8 @@ export default function PortfolioPage() {
                   totals.noiYearly > 0
                     ? "text-green-600 dark:text-green-400"
                     : totals.noiYearly < 0
-                    ? "text-red-600 dark:text-red-400"
-                    : ""
+                      ? "text-red-600 dark:text-red-400"
+                      : ""
                 }`}
               >
                 {formatCompactCurrency(totals.noiYearly)}
@@ -1405,8 +1405,8 @@ export default function PortfolioPage() {
                   totals.cashflowMonthly > 0
                     ? "text-green-600 dark:text-green-400"
                     : totals.cashflowMonthly < 0
-                    ? "text-red-600 dark:text-red-400"
-                    : ""
+                      ? "text-red-600 dark:text-red-400"
+                      : ""
                 }`}
               >
                 {formatCompactCurrency(totals.cashflowMonthly)}
@@ -1426,8 +1426,8 @@ export default function PortfolioPage() {
                   totals.cashflowYearly > 0
                     ? "text-green-600 dark:text-green-400"
                     : totals.cashflowYearly < 0
-                    ? "text-red-600 dark:text-red-400"
-                    : ""
+                      ? "text-red-600 dark:text-red-400"
+                      : ""
                 }`}
               >
                 {formatCompactCurrency(totals.cashflowYearly)}
@@ -1447,8 +1447,8 @@ export default function PortfolioPage() {
                   cocReturn > 0
                     ? "text-green-600 dark:text-green-400"
                     : cocReturn < 0
-                    ? "text-red-600 dark:text-red-400"
-                    : ""
+                      ? "text-red-600 dark:text-red-400"
+                      : ""
                 }`}
               >
                 {formatCompactPercent(cocReturn)}
@@ -1875,8 +1875,8 @@ export default function PortfolioPage() {
                                 dscr >= 1.25
                                   ? "text-green-500"
                                   : dscr >= 1.0
-                                  ? "text-yellow-500"
-                                  : "text-red-500"
+                                    ? "text-yellow-500"
+                                    : "text-red-500"
                               }`}
                             >
                               {dscr > 0 ? `${dscr.toFixed(2)}x` : "N/A"}
@@ -2492,8 +2492,8 @@ export default function PortfolioPage() {
         open={showInterestedDialog}
         onOpenChange={setShowInterestedDialog}
       >
-        <DialogContent className="max-w-[95vw] lg:max-w-[85vw] xl:max-w-7xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-[98vw] lg:max-w-[95vw] xl:max-w-[92vw] h-[90vh] flex flex-col overflow-hidden">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>Add Interested Listings to Portfolio</DialogTitle>
             <DialogDescription>
               Select listings to temporarily add to your portfolio and see how
@@ -2502,7 +2502,7 @@ export default function PortfolioPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-4 flex-1 overflow-y-auto min-h-0">
             {/* Financing Strategy Section */}
             <Card>
               <CardHeader>
@@ -2524,14 +2524,14 @@ export default function PortfolioPage() {
                         // Sync input values when switching modes
                         if (value === "percent") {
                           setDownPaymentPercentInput(
-                            financingStrategy.downPaymentPercent.toString()
+                            financingStrategy.downPaymentPercent.toString(),
                           );
                         } else {
                           // Format the amount as currency when switching to amount mode
                           const amount =
                             financingStrategy.downPaymentAmount || 100000;
                           setDownPaymentAmountInput(
-                            ensureDecimalPadding(amount.toString())
+                            ensureDecimalPadding(amount.toString()),
                           );
                         }
                       }}
@@ -2574,12 +2574,12 @@ export default function PortfolioPage() {
                         value={downPaymentAmountInput}
                         onChange={(e) =>
                           setDownPaymentAmountInput(
-                            formatCurrencyInput(e.target.value)
+                            formatCurrencyInput(e.target.value),
                           )
                         }
                         onBlur={(e) => {
                           const formatted = ensureDecimalPadding(
-                            e.target.value
+                            e.target.value,
                           );
                           setDownPaymentAmountInput(formatted);
                           setFinancingStrategy({
@@ -2600,12 +2600,12 @@ export default function PortfolioPage() {
                       value={interestRateInput}
                       onChange={(e) =>
                         setInterestRateInput(
-                          formatPercentageInput(e.target.value)
+                          formatPercentageInput(e.target.value),
                         )
                       }
                       onBlur={(e) => {
                         const formatted = ensurePercentagePadding(
-                          e.target.value
+                          e.target.value,
                         );
                         setInterestRateInput(formatted);
                         setFinancingStrategy({
@@ -2721,7 +2721,7 @@ export default function PortfolioPage() {
                                 const isAdded = temporaryProperties.some(
                                   (p) =>
                                     p.address ===
-                                    (listing.address1 || listing.address)
+                                    (listing.address1 || listing.address),
                                 );
 
                                 return (
@@ -2748,13 +2748,13 @@ export default function PortfolioPage() {
                                         {listing.sourceUrl && (
                                           <Badge
                                             className={`${getSourceColor(
-                                              listing.source
+                                              listing.source,
                                             )} text-white text-[10px] h-4 px-1.5 cursor-pointer shrink-0`}
                                             onClick={(e) => {
                                               e.stopPropagation();
                                               window.open(
                                                 listing.sourceUrl,
-                                                "_blank"
+                                                "_blank",
                                               );
                                             }}
                                           >
@@ -2808,7 +2808,7 @@ export default function PortfolioPage() {
                                         {(() => {
                                           const { amount, percent } =
                                             getDownPaymentInfo(
-                                              listing.price || 0
+                                              listing.price || 0,
                                             );
                                           return (
                                             <>
@@ -2849,7 +2849,7 @@ export default function PortfolioPage() {
                                       {listing.calculatedExpectedRent ? (
                                         <div className="text-xs font-medium">
                                           {formatCurrency(
-                                            listing.calculatedExpectedRent
+                                            listing.calculatedExpectedRent,
                                           )}
                                         </div>
                                       ) : (
@@ -2928,7 +2928,7 @@ export default function PortfolioPage() {
                                         <Badge
                                           className={`${
                                             getCashflowColor(
-                                              listing.calculatedMonthlyCashflow
+                                              listing.calculatedMonthlyCashflow,
                                             ).className
                                           } text-xs h-5 px-1.5`}
                                         >
@@ -2938,7 +2938,7 @@ export default function PortfolioPage() {
                                             : "-"}
                                           $
                                           {Math.abs(
-                                            listing.calculatedMonthlyCashflow
+                                            listing.calculatedMonthlyCashflow,
                                           ).toFixed(0)}
                                         </Badge>
                                       ) : (
@@ -2953,7 +2953,7 @@ export default function PortfolioPage() {
                                         <Badge
                                           className={`${
                                             getCapRateColor(
-                                              listing.calculatedCapRate
+                                              listing.calculatedCapRate,
                                             ).className
                                           } text-xs h-5 px-1.5`}
                                         >
@@ -2971,12 +2971,12 @@ export default function PortfolioPage() {
                                         <Badge
                                           className={`${
                                             getCocColor(
-                                              listing.calculatedCashOnCash
+                                              listing.calculatedCashOnCash,
                                             ).className
                                           } text-xs h-5 px-1.5`}
                                         >
                                           {listing.calculatedCashOnCash.toFixed(
-                                            1
+                                            1,
                                           )}
                                         </Badge>
                                       ) : (
@@ -2991,12 +2991,12 @@ export default function PortfolioPage() {
                                         <Badge
                                           className={`${
                                             getPriceToRentColor(
-                                              listing.calculatedPriceToRent
+                                              listing.calculatedPriceToRent,
                                             ).className
                                           } text-xs h-5 px-1.5`}
                                         >
                                           {listing.calculatedPriceToRent.toFixed(
-                                            0
+                                            0,
                                           )}
                                         </Badge>
                                       ) : (
@@ -3027,12 +3027,12 @@ export default function PortfolioPage() {
                                         <Badge
                                           className={`${
                                             getBreakEvenColor(
-                                              listing.calculatedBreakEvenRatio
+                                              listing.calculatedBreakEvenRatio,
                                             ).className
                                           } text-xs h-5 px-1.5`}
                                         >
                                           {listing.calculatedBreakEvenRatio.toFixed(
-                                            0
+                                            0,
                                           )}
                                         </Badge>
                                       ) : (
