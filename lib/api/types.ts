@@ -1,3 +1,5 @@
+// ==================== Enums ====================
+
 export type PropertyType =
   | "SINGLE_FAMILY"
   | "CONDO"
@@ -18,6 +20,10 @@ export type ExpenseCategory =
   | "CAPITAL_IMPROVEMENTS"
   | "MARKETING"
   | "OTHER";
+
+export type PortfolioRole = "OWNER" | "MANAGER" | "VIEWER";
+
+// ==================== Property Management ====================
 
 export interface PropertyResponse {
   id: string; // format: uuid
@@ -90,6 +96,8 @@ export interface UpdatePropertyRequest {
   archived?: boolean;
 }
 
+// ==================== Tenant Management ====================
+
 export interface TenantResponse {
   id: string; // format: uuid
   name: string;
@@ -106,13 +114,13 @@ export interface TenantResponse {
 }
 
 export interface CreateTenantRequest {
-  name: string; // maxLength: 255
+  name: string; // required, maxLength: 255
   email?: string;
   phoneNumber?: string; // maxLength: 20, pattern: "^[0-9]+$"
   propertyId?: string; // format: uuid
   leaseStartDate?: string; // format: date
   leaseEndDate?: string; // format: date
-  monthlyRent: number; // minimum: 0.01, required
+  monthlyRent: number; // required, minimum: 0.01
 }
 
 export interface UpdateTenantRequest {
@@ -125,6 +133,8 @@ export interface UpdateTenantRequest {
   monthlyRent?: number;
   archived?: boolean;
 }
+
+// ==================== Rent Collection Management ====================
 
 export interface RentCollectionResponse {
   id: string; // format: uuid
@@ -173,6 +183,8 @@ export interface BulkCreateRentCollectionsRequest {
   items: RentCollectionItemRequest[]; // required - List of individual rent collection items with specific amounts and dates
 }
 
+// ==================== Expense Management ====================
+
 export interface ExpenseResponse {
   id: string; // format: uuid
   propertyId?: string; // format: uuid
@@ -202,13 +214,7 @@ export interface UpdateExpenseRequest {
   description?: string;
 }
 
-export interface RentCollectionTotals {
-  totalExpected: number;
-  totalCollected: number;
-  totalOutstanding: number;
-}
-
-// User Management types
+// ==================== User Management ====================
 export interface UserResponse {
   id: string; // format: uuid
   fullName: string;
@@ -249,7 +255,8 @@ export interface LoginResponse {
   message: string;
 }
 
-// Feedback types
+// ==================== Feedback ====================
+
 export interface FeedbackRequest {
   feedbackType: string; // required
   message: string; // required
@@ -260,13 +267,8 @@ export interface MessageResponse {
   message: string;
 }
 
-// Actuator Link type
-export interface Link {
-  href: string;
-  templated?: boolean;
-}
+// ==================== Error Response ====================
 
-// Error Response types
 export interface FieldError {
   field: string; // Field name that failed validation
   rejectedValue?: any; // Rejected value
@@ -282,6 +284,15 @@ export interface ErrorResponse {
   path: string; // Request path that caused the error
 }
 
+// ==================== Actuator ====================
+
+export interface Link {
+  href: string;
+  templated?: boolean;
+}
+
+// ==================== Legacy Types ====================
+
 // Legacy User type for backward compatibility
 export interface User {
   id: string; // format: uuid
@@ -290,8 +301,13 @@ export interface User {
   role?: string;
 }
 
-// Portfolio Management types
-export type PortfolioRole = "OWNER" | "MANAGER" | "VIEWER";
+export interface RentCollectionTotals {
+  totalExpected: number;
+  totalCollected: number;
+  totalOutstanding: number;
+}
+
+// ==================== Portfolio Management ====================
 
 export interface PortfolioResponse {
   id: string; // format: uuid
@@ -331,7 +347,8 @@ export interface UpdatePortfolioMemberRoleRequest {
   role: PortfolioRole; // required
 }
 
-// Market Listings types
+// ==================== Market Listings ====================
+
 export interface MarketListingResponse {
   id: string; // format: uuid
   source: string; // Listing source
@@ -387,66 +404,17 @@ export interface MarketListingResponse {
   calculatedOER?: number;
 }
 
-export interface MarketListingWithPreferenceResponse {
-  id: string; // format: uuid
-  source: string; // Listing source
-  sourceListingId: string; // External listing ID from the source
-  sourceUrl?: string; // URL to the listing on the source website
-  sourceMlsNumber?: string; // MLS listing number if available
-  saleType?: string; // Sale type
-  listingStatus?: string; // Current listing status
-  soldDate?: string; // format: date
-  listDate?: string; // format: date
-  daysOnMarket?: number; // format: int32
-  address?: string; // Full address as provided by source
-  address1?: string; // Parsed primary address
-  address2?: string; // Parsed secondary address (unit, apt, etc.)
-  city?: string;
-  state?: string; // State abbreviation
-  zipCode?: string;
-  location?: string; // Neighborhood or area name
-  latitude?: number; // Geographic latitude
-  longitude?: number; // Geographic longitude
-  propertyType?: string; // Type of property
-  bedrooms?: number; // format: int32
-  bathrooms?: number;
-  squareFeet?: number; // format: int32 - Interior square footage
-  lotSize?: number; // format: int32 - Lot size in square feet
-  yearBuilt?: number; // format: int32
-  price?: number; // Current listing price or sold price
-  pricePerSqft?: number; // Price per square foot
-  originalListPrice?: number; // Original listing price
-  hoaFee?: number; // Monthly HOA fee
-  nextOpenHouseStart?: string; // format: date-time
-  nextOpenHouseEnd?: string; // format: date-time
-  rawData?: string; // JSON/text storage for additional source-specific fields
-  createdAt: string; // format: date-time
-  updatedAt: string; // format: date-time
-  lastScrapedAt?: string; // format: date-time
+export interface MarketListingWithPreferenceResponse extends MarketListingResponse {
   isInterested: boolean; // User marked as interested in this listing
   notes?: string; // User notes about this listing
 
-  // Calculated fields (client-side only)
-  calculatedExpectedRent?: number;
-  calculatedMonthlyPayment?: number;
-  calculatedCashOnCash?: number;
-  calculatedMeets1Percent?: boolean;
-  calculatedMeets2Percent?: boolean;
-  calculatedMeets50Percent?: boolean;
-  calculatedPriceToRent?: number;
-  calculatedCapRate?: number;
-  calculatedMonthlyCashflow?: number;
-  calculatedTotalMonthlyExpenses?: number;
-  calculatedMonthlyPropertyTax?: number;
-  calculatedMonthlyInsurance?: number;
-  calculatedDSCR?: number;
-  calculatedBreakEvenRatio?: number;
-  calculatedOER?: number;
+  // Additional calculated fields specific to preference response
   calculatedDownPayment?: number;
   calculatedLoanAmount?: number;
 }
 
-// Expected Rent types
+// ==================== Expected Rent ====================
+
 export interface ExpectedRentResponse {
   id: string; // format: uuid
   zipCode: string; // ZIP code
@@ -463,7 +431,8 @@ export interface ExpectedRentByZipResponse {
   rentByBedroom: ExpectedRentResponse[];
 }
 
-// User Zip Code Preferences types
+// ==================== User Zip Code Preferences ====================
+
 export interface ZipCodePreferenceResponse {
   userId: string; // format: uuid
   zipCode: string; // ZIP code
