@@ -92,10 +92,11 @@ type Property = PropertyResponse;
 export default function PropertiesPage() {
   const dispatch = useAppDispatch();
   const { properties, isLoading, error } = useAppSelector(
-    (state) => state.properties
+    (state) => state.properties,
   );
   const { tenants } = useAppSelector((state) => state.tenants);
   const { activePortfolioId } = useAppSelector((state) => state.portfolio);
+  const { user } = useAppSelector((state) => state.auth);
   const { toast } = useToast();
 
   // Local UI state
@@ -105,7 +106,7 @@ export default function PropertiesPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(
-    null
+    null,
   );
   const [formData, setFormData] = useState<{
     address1: string;
@@ -181,6 +182,15 @@ export default function PropertiesPage() {
       return;
     }
 
+    if (!user?.id) {
+      toast({
+        title: "Error",
+        description: "User information not loaded. Please refresh the page.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Validate state
     const stateValidation = validateState(formData.state);
     if (!stateValidation.isValid) {
@@ -195,7 +205,7 @@ export default function PropertiesPage() {
     // Validate purchase date if provided
     if (formData.purchaseDate) {
       const purchaseDateValidation = validatePurchaseDate(
-        formData.purchaseDate
+        formData.purchaseDate,
       );
       if (!purchaseDateValidation.isValid) {
         toast({
@@ -213,7 +223,7 @@ export default function PropertiesPage() {
         parseCurrencyToNumber(formData.debt);
 
       const newProperty: CreatePropertyRequest = {
-        ownerId: 1, // TODO: Get from auth context
+        ownerId: user.id,
         address1: formData.address1,
         address2: formData.address2 || undefined,
         city: formData.city,
@@ -284,7 +294,7 @@ export default function PropertiesPage() {
     // Validate purchase date if provided
     if (formData.purchaseDate) {
       const purchaseDateValidation = validatePurchaseDate(
-        formData.purchaseDate
+        formData.purchaseDate,
       );
       if (!purchaseDateValidation.isValid) {
         toast({
@@ -320,7 +330,7 @@ export default function PropertiesPage() {
       };
 
       await dispatch(
-        updateProperty({ id: selectedProperty.id, data: updateData })
+        updateProperty({ id: selectedProperty.id, data: updateData }),
       ).unwrap();
       setIsEditDialogOpen(false);
       setSelectedProperty(null);
@@ -479,7 +489,7 @@ export default function PropertiesPage() {
   const isPropertyOccupied = (propertyId: number): boolean => {
     // Check if any tenant is currently occupying the property and that the tenant is not archived
     return tenants.some(
-      (tenant) => tenant.propertyId === propertyId && !tenant.archived
+      (tenant) => tenant.propertyId === propertyId && !tenant.archived,
     );
   };
 
@@ -496,7 +506,7 @@ export default function PropertiesPage() {
     vacant: activeProperties.filter((p) => !isPropertyOccupied(p.id)).length,
     totalValue: activeProperties.reduce(
       (sum, p) => sum + (p.marketValue ?? 0),
-      0
+      0,
     ),
   };
 
@@ -789,7 +799,7 @@ export default function PropertiesPage() {
                               setFormData({
                                 ...formData,
                                 purchasePrice: formatCurrencyInput(
-                                  e.target.value
+                                  e.target.value,
                                 ),
                               })
                             }
@@ -797,7 +807,7 @@ export default function PropertiesPage() {
                               setFormData({
                                 ...formData,
                                 purchasePrice: ensureDecimalPadding(
-                                  e.target.value
+                                  e.target.value,
                                 ),
                               })
                             }
@@ -832,7 +842,7 @@ export default function PropertiesPage() {
                               setFormData({
                                 ...formData,
                                 marketValue: formatCurrencyInput(
-                                  e.target.value
+                                  e.target.value,
                                 ),
                               })
                             }
@@ -840,7 +850,7 @@ export default function PropertiesPage() {
                               setFormData({
                                 ...formData,
                                 marketValue: ensureDecimalPadding(
-                                  e.target.value
+                                  e.target.value,
                                 ),
                               })
                             }
@@ -888,7 +898,7 @@ export default function PropertiesPage() {
                               setFormData({
                                 ...formData,
                                 interestRate: formatPercentageInput(
-                                  e.target.value
+                                  e.target.value,
                                 ),
                               })
                             }
@@ -896,7 +906,7 @@ export default function PropertiesPage() {
                               setFormData({
                                 ...formData,
                                 interestRate: ensurePercentagePadding(
-                                  e.target.value
+                                  e.target.value,
                                 ),
                               })
                             }
@@ -923,7 +933,7 @@ export default function PropertiesPage() {
                               setFormData({
                                 ...formData,
                                 propertyTax: formatCurrencyInput(
-                                  e.target.value
+                                  e.target.value,
                                 ),
                               })
                             }
@@ -931,7 +941,7 @@ export default function PropertiesPage() {
                               setFormData({
                                 ...formData,
                                 propertyTax: ensureDecimalPadding(
-                                  e.target.value
+                                  e.target.value,
                                 ),
                               })
                             }
@@ -1059,7 +1069,7 @@ export default function PropertiesPage() {
                 title="Occupied"
                 value={stats.occupied}
                 subtitle={`${((stats.occupied / stats.total) * 100).toFixed(
-                  0
+                  0,
                 )}% occupancy`}
                 icon={Users}
               />
@@ -1082,7 +1092,7 @@ export default function PropertiesPage() {
                 const rent =
                   tenants.find(
                     (tenant) =>
-                      tenant.propertyId === property.id && !tenant.archived
+                      tenant.propertyId === property.id && !tenant.archived,
                   )?.monthlyRent || 0;
                 return (
                   <Card key={property.id}>
@@ -1288,7 +1298,7 @@ export default function PropertiesPage() {
                         tenants.find(
                           (tenant) =>
                             tenant.propertyId === property.id &&
-                            !tenant.archived
+                            !tenant.archived,
                         )?.monthlyRent || 0;
                       return (
                         <Card key={property.id} className="opacity-60">
@@ -1651,7 +1661,7 @@ export default function PropertiesPage() {
                           setFormData({
                             ...formData,
                             interestRate: ensurePercentagePadding(
-                              e.target.value
+                              e.target.value,
                             ),
                           })
                         }
