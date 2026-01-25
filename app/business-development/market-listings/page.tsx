@@ -142,7 +142,7 @@ export default function MarketListingsPage() {
     | "calculatedBreakEvenRatio"
     | "calculatedOER";
   const [sortField, setSortField] = useState<SortField | null>(
-    "calculatedMonthlyCashflow"
+    "calculatedMonthlyCashflow",
   );
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
@@ -157,7 +157,7 @@ export default function MarketListingsPage() {
       downPaymentAmount: 100000,
       interestRate: 6,
       loanTermYears: 30,
-    }
+    },
   );
   // Local state for input values to avoid update lag
   const [downPaymentPercentInput, setDownPaymentPercentInput] = useState("20");
@@ -232,7 +232,7 @@ export default function MarketListingsPage() {
   };
 
   const loadExpectedRents = async (
-    listingsData: MarketListingWithPreferenceResponse[]
+    listingsData: MarketListingWithPreferenceResponse[],
   ) => {
     setLoadingExpectedRents(true);
 
@@ -241,8 +241,8 @@ export default function MarketListingsPage() {
       new Set(
         listingsData
           .filter((listing) => listing.zipCode)
-          .map((listing) => listing.zipCode!)
-      )
+          .map((listing) => listing.zipCode!),
+      ),
     );
 
     // Fetch expected rent data for each unique zip code once
@@ -257,7 +257,7 @@ export default function MarketListingsPage() {
         } catch (error) {
           console.warn(`Failed to fetch expected rent for ${zipCode}`);
         }
-      })
+      }),
     );
 
     // Apply expected rent data to all listings
@@ -274,7 +274,7 @@ export default function MarketListingsPage() {
       try {
         // Find the expected rent for this specific bedroom count
         const expectedRentData = rentDataArray.find(
-          (data) => data.bedrooms === listing.bedrooms
+          (data) => data.bedrooms === listing.bedrooms,
         );
 
         if (!expectedRentData) {
@@ -290,27 +290,27 @@ export default function MarketListingsPage() {
           financingStrategy,
           listing.hoaFee || 0,
           estimateMonthlyPropertyTax(listing.price, listing.state),
-          estimateMonthlyInsurance(listing.price)
+          estimateMonthlyInsurance(listing.price),
         );
 
         // Calculate additional rules of thumb
         const meets2Percent = meets2PercentRule(expectedRent, listing.price);
         const meets50Percent = meets50PercentRule(
           expectedRent,
-          metrics.monthlyMortgagePayment
+          metrics.monthlyMortgagePayment,
         );
         const priceToRent = calculatePriceToRentRatio(
           listing.price,
-          expectedRent
+          expectedRent,
         );
         const capRate = calculateCapRate(listing.price, expectedRent);
         const dscr = calculateDSCR(
           expectedRent,
-          metrics.monthlyMortgagePayment
+          metrics.monthlyMortgagePayment,
         );
         const breakEvenRatio = calculateBreakEvenRatio(
           expectedRent,
-          metrics.monthlyMortgagePayment
+          metrics.monthlyMortgagePayment,
         );
         const oer = calculateOperatingExpenseRatio(expectedRent);
 
@@ -335,7 +335,7 @@ export default function MarketListingsPage() {
       } catch (error) {
         console.error(
           `Failed to calculate metrics for listing ${listing.id}:`,
-          error
+          error,
         );
         return listing;
       }
@@ -383,21 +383,21 @@ export default function MarketListingsPage() {
     // City filter
     if (filterCity) {
       filtered = filtered.filter((l) =>
-        l.city?.toLowerCase().includes(filterCity.toLowerCase())
+        l.city?.toLowerCase().includes(filterCity.toLowerCase()),
       );
     }
 
     // State filter
     if (filterState) {
       filtered = filtered.filter((l) =>
-        l.state?.toLowerCase().includes(filterState.toLowerCase())
+        l.state?.toLowerCase().includes(filterState.toLowerCase()),
       );
     }
 
     // Hide listings without calculable cashflow
     if (hideListingsWithoutCashflow) {
       filtered = filtered.filter(
-        (l) => l.calculatedMonthlyCashflow !== undefined
+        (l) => l.calculatedMonthlyCashflow !== undefined,
       );
     }
 
@@ -425,7 +425,7 @@ export default function MarketListingsPage() {
           l.state?.toLowerCase().includes(query) ||
           l.zipCode?.toLowerCase().includes(query) ||
           l.propertyType?.toLowerCase().includes(query) ||
-          l.source?.toLowerCase().includes(query)
+          l.source?.toLowerCase().includes(query),
       );
     }
 
@@ -552,8 +552,8 @@ export default function MarketListingsPage() {
       const updated = await marketListingsApi.toggleInterested(id);
       setListings((prev) =>
         prev.map((l) =>
-          l.id === id ? { ...l, isInterested: updated.isInterested } : l
-        )
+          l.id === id ? { ...l, isInterested: updated.isInterested } : l,
+        ),
       );
       if (selectedListing?.id === id) {
         setSelectedListing({
@@ -753,7 +753,7 @@ export default function MarketListingsPage() {
 
   const getUniqueValues = (key: keyof MarketListingWithPreferenceResponse) => {
     const values = new Set(
-      listings.map((l) => l[key]).filter((v) => v !== null && v !== undefined)
+      listings.map((l) => l[key]).filter((v) => v !== null && v !== undefined),
     );
     return Array.from(values).sort();
   };
@@ -835,14 +835,14 @@ export default function MarketListingsPage() {
                               // Sync input values when switching modes
                               if (value === "percent") {
                                 setDownPaymentPercentInput(
-                                  financingStrategy.downPaymentPercent.toString()
+                                  financingStrategy.downPaymentPercent.toString(),
                                 );
                               } else {
                                 // Format the amount as currency when switching to amount mode
                                 const amount =
                                   financingStrategy.downPaymentAmount || 100000;
                                 setDownPaymentAmountInput(
-                                  ensureDecimalPadding(amount.toString())
+                                  ensureDecimalPadding(amount.toString()),
                                 );
                               }
                             }}
@@ -886,12 +886,12 @@ export default function MarketListingsPage() {
                             value={downPaymentAmountInput}
                             onChange={(e) =>
                               setDownPaymentAmountInput(
-                                formatCurrencyInput(e.target.value)
+                                formatCurrencyInput(e.target.value),
                               )
                             }
                             onBlur={(e) => {
                               const formatted = ensureDecimalPadding(
-                                e.target.value
+                                e.target.value,
                               );
                               setDownPaymentAmountInput(formatted);
                               setFinancingStrategy({
@@ -939,12 +939,12 @@ export default function MarketListingsPage() {
                         value={interestRateInput}
                         onChange={(e) =>
                           setInterestRateInput(
-                            formatPercentageInput(e.target.value)
+                            formatPercentageInput(e.target.value),
                           )
                         }
                         onBlur={(e) => {
                           const formatted = ensurePercentagePadding(
-                            e.target.value
+                            e.target.value,
                           );
                           setInterestRateInput(formatted);
                           setFinancingStrategy({
@@ -1073,7 +1073,7 @@ export default function MarketListingsPage() {
                                       >
                                         {type as string}
                                       </SelectItem>
-                                    )
+                                    ),
                                   )}
                                 </SelectContent>
                               </Select>
@@ -1210,22 +1210,33 @@ export default function MarketListingsPage() {
                   No listings found
                 </h3>
                 <p className="text-sm text-muted-foreground mt-2">
-                  Try adjusting your filters or check back later for new
-                  listings.
+                  {listings.length === 0
+                    ? "No active listings available. Add zip codes to your market preferences on the settings page to start receiving listings."
+                    : "Try adjusting your filters or check back later for new listings."}
                 </p>
-                {(filterSource !== "all" ||
-                  filterPropertyType !== "all" ||
-                  filterMinPrice ||
-                  filterMaxPrice ||
-                  showInterestedOnly) && (
+                {listings.length === 0 && (
                   <Button
                     variant="outline"
                     className="mt-4"
-                    onClick={clearFilters}
+                    onClick={() => (window.location.href = "/settings")}
                   >
-                    Clear Filters
+                    Go to Settings
                   </Button>
                 )}
+                {listings.length > 0 &&
+                  (filterSource !== "all" ||
+                    filterPropertyType !== "all" ||
+                    filterMinPrice ||
+                    filterMaxPrice ||
+                    showInterestedOnly) && (
+                    <Button
+                      variant="outline"
+                      className="mt-4"
+                      onClick={clearFilters}
+                    >
+                      Clear Filters
+                    </Button>
+                  )}
               </div>
             </CardContent>
           </Card>
@@ -1370,7 +1381,7 @@ export default function MarketListingsPage() {
                             {listing.sourceUrl && (
                               <Badge
                                 className={`${getSourceColor(
-                                  listing.source
+                                  listing.source,
                                 )} text-white text-[10px] h-4 px-1.5 cursor-pointer shrink-0`}
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -1423,7 +1434,7 @@ export default function MarketListingsPage() {
                           <div className="text-xs text-muted-foreground">
                             {(() => {
                               const { amount, percent } = getDownPaymentInfo(
-                                listing.price || 0
+                                listing.price || 0,
                               );
                               return (
                                 <>
@@ -1530,7 +1541,7 @@ export default function MarketListingsPage() {
                             <Badge
                               className={`${
                                 getCashflowColor(
-                                  listing.calculatedMonthlyCashflow
+                                  listing.calculatedMonthlyCashflow,
                                 ).className
                               } text-xs h-5 px-1.5`}
                             >
@@ -1539,7 +1550,7 @@ export default function MarketListingsPage() {
                                 : "-"}
                               $
                               {Math.abs(
-                                listing.calculatedMonthlyCashflow
+                                listing.calculatedMonthlyCashflow,
                               ).toFixed(0)}
                             </Badge>
                           ) : (
@@ -1585,7 +1596,7 @@ export default function MarketListingsPage() {
                             <Badge
                               className={`${
                                 getPriceToRentColor(
-                                  listing.calculatedPriceToRent
+                                  listing.calculatedPriceToRent,
                                 ).className
                               } text-xs h-5 px-1.5`}
                             >
@@ -1617,7 +1628,7 @@ export default function MarketListingsPage() {
                             <Badge
                               className={`${
                                 getBreakEvenColor(
-                                  listing.calculatedBreakEvenRatio
+                                  listing.calculatedBreakEvenRatio,
                                 ).className
                               } text-xs h-5 px-1.5`}
                             >
@@ -1817,7 +1828,7 @@ export default function MarketListingsPage() {
                           <div>
                             <div className="font-medium">
                               {formatCurrency(
-                                selectedListing.originalListPrice
+                                selectedListing.originalListPrice,
                               )}
                             </div>
                             <div className="text-sm text-muted-foreground">
@@ -1864,15 +1875,15 @@ export default function MarketListingsPage() {
                                 0) >= 200
                                 ? "text-green-600"
                                 : (selectedListing.calculatedMonthlyCashflow ||
-                                    0) >= 0
-                                ? "text-yellow-600"
-                                : "text-red-600"
+                                      0) >= 0
+                                  ? "text-yellow-600"
+                                  : "text-red-600"
                             }`}
                           >
                             {selectedListing.calculatedMonthlyCashflow !==
                             undefined
                               ? formatCurrency(
-                                  selectedListing.calculatedMonthlyCashflow
+                                  selectedListing.calculatedMonthlyCashflow,
                                 )
                               : "N/A"}
                           </div>
@@ -1881,9 +1892,9 @@ export default function MarketListingsPage() {
                             200
                               ? "Strong positive cashflow"
                               : (selectedListing.calculatedMonthlyCashflow ||
-                                  0) >= 0
-                              ? "Break-even or slight positive"
-                              : "Negative cashflow"}
+                                    0) >= 0
+                                ? "Break-even or slight positive"
+                                : "Negative cashflow"}
                           </div>
                         </div>
                         <Badge
@@ -1892,18 +1903,18 @@ export default function MarketListingsPage() {
                             200
                               ? "bg-green-600 hover:bg-green-700 text-lg px-4 py-2"
                               : (selectedListing.calculatedMonthlyCashflow ||
-                                  0) >= 0
-                              ? "bg-yellow-600 hover:bg-yellow-700 text-lg px-4 py-2"
-                              : "bg-red-600 hover:bg-red-700 text-lg px-4 py-2"
+                                    0) >= 0
+                                ? "bg-yellow-600 hover:bg-yellow-700 text-lg px-4 py-2"
+                                : "bg-red-600 hover:bg-red-700 text-lg px-4 py-2"
                           }
                         >
                           {(selectedListing.calculatedMonthlyCashflow || 0) >=
                           200
                             ? "Excellent"
                             : (selectedListing.calculatedMonthlyCashflow ||
-                                0) >= 0
-                            ? "Okay"
-                            : "Poor"}
+                                  0) >= 0
+                              ? "Okay"
+                              : "Poor"}
                         </Badge>
                       </div>
                     </div>
@@ -1921,7 +1932,7 @@ export default function MarketListingsPage() {
                           <span className="font-medium">
                             {selectedListing.calculatedMonthlyPayment
                               ? formatCurrency(
-                                  selectedListing.calculatedMonthlyPayment
+                                  selectedListing.calculatedMonthlyPayment,
                                 )
                               : "N/A"}
                           </span>
@@ -1933,7 +1944,7 @@ export default function MarketListingsPage() {
                           <span className="font-medium">
                             {selectedListing.calculatedMonthlyPropertyTax
                               ? formatCurrency(
-                                  selectedListing.calculatedMonthlyPropertyTax
+                                  selectedListing.calculatedMonthlyPropertyTax,
                                 )
                               : "N/A"}
                           </span>
@@ -1945,7 +1956,7 @@ export default function MarketListingsPage() {
                           <span className="font-medium">
                             {selectedListing.calculatedMonthlyInsurance
                               ? formatCurrency(
-                                  selectedListing.calculatedMonthlyInsurance
+                                  selectedListing.calculatedMonthlyInsurance,
                                 )
                               : "N/A"}
                           </span>
@@ -1967,7 +1978,7 @@ export default function MarketListingsPage() {
                           <span className="text-lg">
                             {selectedListing.calculatedTotalMonthlyExpenses
                               ? formatCurrency(
-                                  selectedListing.calculatedTotalMonthlyExpenses
+                                  selectedListing.calculatedTotalMonthlyExpenses,
                                 )
                               : "N/A"}
                           </span>
@@ -2059,7 +2070,7 @@ export default function MarketListingsPage() {
                         <Badge
                           className={
                             getPriceToRentColor(
-                              selectedListing.calculatedPriceToRent
+                              selectedListing.calculatedPriceToRent,
                             ).className
                           }
                         >
@@ -2071,8 +2082,8 @@ export default function MarketListingsPage() {
                           {(selectedListing.calculatedPriceToRent || 0) <= 15
                             ? "Good for buying"
                             : (selectedListing.calculatedPriceToRent || 0) <= 20
-                            ? "Neutral"
-                            : "Better to rent"}
+                              ? "Neutral"
+                              : "Better to rent"}
                         </div>
                       </div>
                     </div>
@@ -2085,7 +2096,7 @@ export default function MarketListingsPage() {
                         </div>
                         <div className="text-2xl font-bold text-blue-600">
                           {formatCurrency(
-                            selectedListing.calculatedExpectedRent
+                            selectedListing.calculatedExpectedRent,
                           )}
                         </div>
                       </div>
@@ -2099,8 +2110,8 @@ export default function MarketListingsPage() {
                             (selectedListing.calculatedCapRate || 0) >= 8
                               ? "text-green-600"
                               : (selectedListing.calculatedCapRate || 0) >= 5
-                              ? "text-yellow-600"
-                              : "text-red-600"
+                                ? "text-yellow-600"
+                                : "text-red-600"
                           }`}
                         >
                           {selectedListing.calculatedCapRate !== undefined
@@ -2111,8 +2122,8 @@ export default function MarketListingsPage() {
                           {(selectedListing.calculatedCapRate || 0) >= 8
                             ? "Excellent"
                             : (selectedListing.calculatedCapRate || 0) >= 5
-                            ? "Good"
-                            : "Below Average"}
+                              ? "Good"
+                              : "Below Average"}
                         </div>
                       </div>
 
@@ -2125,13 +2136,13 @@ export default function MarketListingsPage() {
                             (selectedListing.calculatedCashOnCash || 0) >= 8
                               ? "text-green-600"
                               : (selectedListing.calculatedCashOnCash || 0) >= 5
-                              ? "text-yellow-600"
-                              : "text-red-600"
+                                ? "text-yellow-600"
+                                : "text-red-600"
                           }`}
                         >
                           {selectedListing.calculatedCashOnCash !== undefined
                             ? `${selectedListing.calculatedCashOnCash.toFixed(
-                                1
+                                1,
                               )}%`
                             : "N/A"}
                         </div>
@@ -2139,8 +2150,8 @@ export default function MarketListingsPage() {
                           {(selectedListing.calculatedCashOnCash || 0) >= 8
                             ? "Excellent"
                             : (selectedListing.calculatedCashOnCash || 0) >= 5
-                            ? "Good"
-                            : "Below Average"}
+                              ? "Good"
+                              : "Below Average"}
                         </div>
                       </div>
                     </div>
@@ -2156,8 +2167,8 @@ export default function MarketListingsPage() {
                             (selectedListing.calculatedDSCR || 0) >= 1.25
                               ? "text-green-600"
                               : (selectedListing.calculatedDSCR || 0) >= 1.0
-                              ? "text-yellow-600"
-                              : "text-red-600"
+                                ? "text-yellow-600"
+                                : "text-red-600"
                           }`}
                         >
                           {selectedListing.calculatedDSCR !== undefined
@@ -2168,8 +2179,8 @@ export default function MarketListingsPage() {
                           {(selectedListing.calculatedDSCR || 0) >= 1.25
                             ? "Strong coverage"
                             : (selectedListing.calculatedDSCR || 0) >= 1.0
-                            ? "Adequate coverage"
-                            : "Insufficient income"}
+                              ? "Adequate coverage"
+                              : "Insufficient income"}
                         </div>
                       </div>
 
@@ -2182,15 +2193,15 @@ export default function MarketListingsPage() {
                             (selectedListing.calculatedBreakEvenRatio || 0) < 85
                               ? "text-green-600"
                               : (selectedListing.calculatedBreakEvenRatio ||
-                                  0) < 100
-                              ? "text-yellow-600"
-                              : "text-red-600"
+                                    0) < 100
+                                ? "text-yellow-600"
+                                : "text-red-600"
                           }`}
                         >
                           {selectedListing.calculatedBreakEvenRatio !==
                           undefined
                             ? `${selectedListing.calculatedBreakEvenRatio.toFixed(
-                                0
+                                0,
                               )}%`
                             : "N/A"}
                         </div>
@@ -2198,9 +2209,9 @@ export default function MarketListingsPage() {
                           {(selectedListing.calculatedBreakEvenRatio || 0) < 85
                             ? "Good cushion"
                             : (selectedListing.calculatedBreakEvenRatio || 0) <
-                              100
-                            ? "Tight but manageable"
-                            : "Negative cash flow"}
+                                100
+                              ? "Tight but manageable"
+                              : "Negative cash flow"}
                         </div>
                       </div>
 
@@ -2213,8 +2224,8 @@ export default function MarketListingsPage() {
                             (selectedListing.calculatedOER || 0) <= 40
                               ? "text-green-600"
                               : (selectedListing.calculatedOER || 0) <= 50
-                              ? "text-yellow-600"
-                              : "text-red-600"
+                                ? "text-yellow-600"
+                                : "text-red-600"
                           }`}
                         >
                           {selectedListing.calculatedOER !== undefined
@@ -2225,8 +2236,8 @@ export default function MarketListingsPage() {
                           {(selectedListing.calculatedOER || 0) <= 40
                             ? "Excellent efficiency"
                             : (selectedListing.calculatedOER || 0) <= 50
-                            ? "Industry standard"
-                            : "High expenses"}
+                              ? "Industry standard"
+                              : "High expenses"}
                         </div>
                       </div>
                     </div>
@@ -2237,7 +2248,7 @@ export default function MarketListingsPage() {
                         {financingStrategy.downPaymentPercent}% down (
                         {formatCurrency(
                           (selectedListing.price || 0) *
-                            (financingStrategy.downPaymentPercent / 100)
+                            (financingStrategy.downPaymentPercent / 100),
                         )}
                         ), {financingStrategy.interestRate}% interest rate,{" "}
                         {financingStrategy.loanTermYears}-year term
