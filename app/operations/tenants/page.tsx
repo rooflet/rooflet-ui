@@ -14,13 +14,16 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  RentPeriodsManager,
+  type RentPeriod,
+} from "@/components/rent-periods-manager";
+import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Collapsible,
   CollapsibleContent,
@@ -68,11 +71,7 @@ import {
   formatCurrencyInput,
   parseCurrencyToNumber,
 } from "@/lib/currency-utils";
-import {
-  getTodayLocalDate,
-  toLocalDateString,
-  validateLeaseDates,
-} from "@/lib/date-validation";
+import { getTodayLocalDate, validateLeaseDates } from "@/lib/date-validation";
 import {
   extractPhoneNumbers,
   formatPhoneAsYouType,
@@ -89,12 +88,10 @@ import {
   updateTenant,
 } from "@/store/slices/tenantsSlice";
 import {
-  AlertTriangle,
   Archive,
   ArchiveRestore,
   ChevronDown,
   ChevronUp,
-  DollarSign,
   Mail,
   Pencil,
   Phone,
@@ -135,133 +132,8 @@ export default function TenantsPage() {
   const [phoneError, setPhoneError] = useState<string | null>(null);
 
   // Rent periods state
-  interface RentPeriod {
-    id: string;
-    startDate: string;
-    endDate: string;
-    monthlyRent: number;
-  }
-
-  interface ValidationWarning {
-    type: "gap" | "overlap" | "future";
-    message: string;
-    periodIndices: number[];
-  }
-
   const [rentPeriodsEnabled, setRentPeriodsEnabled] = useState(false);
   const [rentPeriods, setRentPeriods] = useState<RentPeriod[]>([]);
-  const [editingPeriodId, setEditingPeriodId] = useState<string | null>(null);
-
-  // Date formatting utility
-  const formatDateWithMonth = (dateString: string): string => {
-    // Parse date string manually to avoid timezone issues
-    const [year, month, day] = dateString.split("-").map(Number);
-    const date = new Date(year, month - 1, day);
-    const months = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
-    ];
-    return `${
-      months[date.getMonth()]
-    } ${date.getDate()}, ${date.getFullYear()}`;
-  };
-
-  // Calculate months between two dates
-  const calculateMonths = (startDate: string, endDate: string): number => {
-    // Parse date strings manually to avoid timezone issues
-    const [startYear, startMonth, startDay] = startDate.split("-").map(Number);
-    const [endYear, endMonth, endDay] = endDate.split("-").map(Number);
-    const start = new Date(startYear, startMonth - 1, startDay);
-    const end = new Date(endYear, endMonth - 1, endDay);
-    const yearsDiff = end.getFullYear() - start.getFullYear();
-    const monthsDiff = end.getMonth() - start.getMonth();
-    return Math.max(0, yearsDiff * 12 + monthsDiff + 1);
-  };
-
-  // Validate rent periods and return warnings
-  const validateRentPeriods = (periods: RentPeriod[]): ValidationWarning[] => {
-    if (periods.length === 0) return [];
-
-    const warnings: ValidationWarning[] = [];
-    const sortedPeriods = [...periods].sort(
-      (a, b) =>
-        new Date(a.startDate).getTime() - new Date(b.startDate).getTime(),
-    );
-
-    // Check for overlaps
-    for (let i = 0; i < sortedPeriods.length - 1; i++) {
-      const current = sortedPeriods[i];
-      const next = sortedPeriods[i + 1];
-      const currentEnd = new Date(current.endDate);
-      const nextStart = new Date(next.startDate);
-
-      if (currentEnd >= nextStart) {
-        const currentIndex = periods.indexOf(current);
-        const nextIndex = periods.indexOf(next);
-        warnings.push({
-          type: "overlap",
-          message: `Period ${currentIndex + 1} and Period ${
-            nextIndex + 1
-          } overlap`,
-          periodIndices: [currentIndex, nextIndex],
-        });
-      }
-    }
-
-    // Check for gaps (more than 1 day)
-    for (let i = 0; i < sortedPeriods.length - 1; i++) {
-      const current = sortedPeriods[i];
-      const next = sortedPeriods[i + 1];
-      const currentEnd = new Date(current.endDate);
-      const nextStart = new Date(next.startDate);
-
-      const daysDiff = Math.floor(
-        (nextStart.getTime() - currentEnd.getTime()) / (1000 * 60 * 60 * 24),
-      );
-
-      if (daysDiff > 1) {
-        const currentIndex = periods.indexOf(current);
-        const nextIndex = periods.indexOf(next);
-        warnings.push({
-          type: "gap",
-          message: `${daysDiff} day gap between Period ${
-            currentIndex + 1
-          } and Period ${nextIndex + 1}`,
-          periodIndices: [currentIndex, nextIndex],
-        });
-      }
-    }
-
-    // Check for future dates
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    sortedPeriods.forEach((period, index) => {
-      const endDate = new Date(period.endDate);
-      endDate.setHours(0, 0, 0, 0);
-
-      if (endDate > today) {
-        const originalIndex = periods.indexOf(period);
-        warnings.push({
-          type: "future",
-          message: `Period ${originalIndex + 1} ends in the future`,
-          periodIndices: [originalIndex],
-        });
-      }
-    });
-
-    return warnings;
-  };
 
   useEffect(() => {
     dispatch(fetchTenants({ activeOnly: false }));
@@ -780,7 +652,6 @@ export default function TenantsPage() {
     setPhoneError(null);
     setRentPeriodsEnabled(false);
     setRentPeriods([]);
-    setEditingPeriodId(null);
   };
 
   const handlePhoneChange = (value: string) => {
@@ -1001,395 +872,19 @@ export default function TenantsPage() {
 
                     {/* Rent Periods Section */}
                     {formData.leaseStart && formData.propertyId && (
-                      <div className="pt-4 border-t space-y-4">
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id="createRentPeriods"
-                            checked={rentPeriodsEnabled}
-                            onCheckedChange={(checked) => {
-                              setRentPeriodsEnabled(checked === true);
-                              if (checked && rentPeriods.length === 0) {
-                                const today = getTodayLocalDate();
-                                const rentValue = formData.rent
-                                  ? parseCurrencyToNumber(formData.rent)
-                                  : 0;
-                                setRentPeriods([
-                                  {
-                                    id: crypto.randomUUID(),
-                                    startDate: formData.leaseStart || today,
-                                    endDate: today,
-                                    monthlyRent: rentValue,
-                                  },
-                                ]);
-                              }
-                            }}
-                          />
-                          <Label
-                            htmlFor="createRentPeriods"
-                            className="font-semibold cursor-pointer text-sm"
-                          >
-                            Create rent payment history automatically
-                          </Label>
-                        </div>
-
-                        {rentPeriodsEnabled && (
-                          <div className="space-y-3 pl-6 border-l-2 border-primary/20">
-                            <Alert className="items-start">
-                              <AlertTriangle className="size-4" />
-                              <AlertDescription className="text-xs">
-                                Define rent periods to track rent history. This
-                                will create fully paid rent records.
-                              </AlertDescription>
-                            </Alert>
-
-                            {/* Existing Rent Periods */}
-                            <div className="space-y-2">
-                              {rentPeriods.map((period, index) => {
-                                const warnings =
-                                  validateRentPeriods(rentPeriods);
-                                const periodWarnings = warnings.filter((w) =>
-                                  w.periodIndices.includes(index),
-                                );
-
-                                return (
-                                  <Card
-                                    key={period.id}
-                                    className={`border-primary/20 ${
-                                      periodWarnings.length > 0
-                                        ? "ring-2 ring-amber-500/30"
-                                        : ""
-                                    }`}
-                                  >
-                                    <CardContent className="pt-3 space-y-2">
-                                      <div className="flex items-center justify-between">
-                                        <h4 className="font-semibold text-xs">
-                                          Period {index + 1}
-                                        </h4>
-                                        <div className="flex gap-1.5">
-                                          <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() =>
-                                              setEditingPeriodId(period.id)
-                                            }
-                                            className="h-6 text-xs border-primary/30"
-                                          >
-                                            Edit
-                                          </Button>
-                                          <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => {
-                                              setRentPeriods(
-                                                rentPeriods.filter(
-                                                  (p) => p.id !== period.id,
-                                                ),
-                                              );
-                                            }}
-                                            className="h-6 text-xs border-destructive/30 text-destructive"
-                                          >
-                                            Remove
-                                          </Button>
-                                        </div>
-                                      </div>
-
-                                      {editingPeriodId === period.id ? (
-                                        <div className="space-y-2">
-                                          <div className="grid grid-cols-2 gap-2">
-                                            <div className="space-y-1">
-                                              <Label className="text-xs">
-                                                Start Date
-                                              </Label>
-                                              <Input
-                                                type="date"
-                                                value={period.startDate}
-                                                min={
-                                                  formData.leaseStart ||
-                                                  undefined
-                                                }
-                                                max={period.endDate}
-                                                onChange={(e) => {
-                                                  setRentPeriods(
-                                                    rentPeriods.map((p) =>
-                                                      p.id === period.id
-                                                        ? {
-                                                            ...p,
-                                                            startDate:
-                                                              e.target.value,
-                                                          }
-                                                        : p,
-                                                    ),
-                                                  );
-                                                }}
-                                                className="h-7 text-xs"
-                                              />
-                                            </div>
-                                            <div className="space-y-1">
-                                              <Label className="text-xs">
-                                                End Date
-                                              </Label>
-                                              <Input
-                                                type="date"
-                                                value={period.endDate}
-                                                min={period.startDate}
-                                                max={
-                                                  formData.leaseEnd || undefined
-                                                }
-                                                onChange={(e) => {
-                                                  setRentPeriods(
-                                                    rentPeriods.map((p) =>
-                                                      p.id === period.id
-                                                        ? {
-                                                            ...p,
-                                                            endDate:
-                                                              e.target.value,
-                                                          }
-                                                        : p,
-                                                    ),
-                                                  );
-                                                }}
-                                                className="h-7 text-xs"
-                                              />
-                                            </div>
-                                          </div>
-                                          <div className="space-y-1">
-                                            <Label className="text-xs">
-                                              Monthly Rent
-                                            </Label>
-                                            <Input
-                                              type="text"
-                                              value={
-                                                period.monthlyRent
-                                                  ? formatCurrencyInput(
-                                                      period.monthlyRent.toString(),
-                                                    )
-                                                  : ""
-                                              }
-                                              onChange={(e) => {
-                                                const formatted =
-                                                  formatCurrencyInput(
-                                                    e.target.value,
-                                                  );
-                                                const value =
-                                                  parseCurrencyToNumber(
-                                                    formatted,
-                                                  );
-                                                setRentPeriods(
-                                                  rentPeriods.map((p) =>
-                                                    p.id === period.id
-                                                      ? {
-                                                          ...p,
-                                                          monthlyRent: value,
-                                                        }
-                                                      : p,
-                                                  ),
-                                                );
-                                              }}
-                                              onBlur={(e) => {
-                                                const padded =
-                                                  ensureDecimalPadding(
-                                                    e.target.value,
-                                                  );
-                                                const value =
-                                                  parseCurrencyToNumber(padded);
-                                                setRentPeriods(
-                                                  rentPeriods.map((p) =>
-                                                    p.id === period.id
-                                                      ? {
-                                                          ...p,
-                                                          monthlyRent: value,
-                                                        }
-                                                      : p,
-                                                  ),
-                                                );
-                                              }}
-                                              placeholder="$2,000.00"
-                                              className="h-7 text-xs"
-                                            />
-                                          </div>
-                                          <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() =>
-                                              setEditingPeriodId(null)
-                                            }
-                                            className="h-6 w-full text-xs"
-                                          >
-                                            Done
-                                          </Button>
-                                        </div>
-                                      ) : (
-                                        <div className="space-y-1.5 text-xs">
-                                          <div className="flex justify-between">
-                                            <span className="text-muted-foreground">
-                                              Duration
-                                            </span>
-                                            <span className="font-medium">
-                                              {formatDateWithMonth(
-                                                period.startDate,
-                                              )}{" "}
-                                              →{" "}
-                                              {formatDateWithMonth(
-                                                period.endDate,
-                                              )}
-                                            </span>
-                                          </div>
-                                          <div className="flex justify-between">
-                                            <span className="text-muted-foreground">
-                                              Rent
-                                            </span>
-                                            <span className="font-semibold text-primary">
-                                              $
-                                              {period.monthlyRent.toLocaleString(
-                                                "en-US",
-                                                {
-                                                  minimumFractionDigits: 2,
-                                                  maximumFractionDigits: 2,
-                                                },
-                                              )}
-                                            </span>
-                                          </div>
-                                          <div className="flex justify-between">
-                                            <span className="text-muted-foreground">
-                                              Duration
-                                            </span>
-                                            <span>
-                                              {calculateMonths(
-                                                period.startDate,
-                                                period.endDate,
-                                              )}{" "}
-                                              months
-                                            </span>
-                                          </div>
-
-                                          {periodWarnings.length > 0 && (
-                                            <div className="space-y-1 pt-1 border-t border-amber-500/20">
-                                              {periodWarnings.map(
-                                                (warning, wIdx) => (
-                                                  <div
-                                                    key={wIdx}
-                                                    className="flex items-start gap-1 text-xs text-amber-700 dark:text-amber-400"
-                                                  >
-                                                    <AlertTriangle className="size-3 mt-0.5" />
-                                                    <span>
-                                                      {warning.message}
-                                                    </span>
-                                                  </div>
-                                                ),
-                                              )}
-                                            </div>
-                                          )}
-                                        </div>
-                                      )}
-                                    </CardContent>
-                                  </Card>
-                                );
-                              })}
-                            </div>
-
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                const lastPeriod =
-                                  rentPeriods[rentPeriods.length - 1];
-                                const today = getTodayLocalDate();
-                                const nextStartDate = lastPeriod
-                                  ? (() => {
-                                      const lastEnd = new Date(
-                                        lastPeriod.endDate,
-                                      );
-                                      lastEnd.setDate(lastEnd.getDate() + 1);
-                                      return toLocalDateString(lastEnd);
-                                    })()
-                                  : formData.leaseStart || today;
-                                const rentValue = formData.rent
-                                  ? parseCurrencyToNumber(formData.rent)
-                                  : 0;
-
-                                setRentPeriods([
-                                  ...rentPeriods,
-                                  {
-                                    id: crypto.randomUUID(),
-                                    startDate: nextStartDate,
-                                    endDate: today,
-                                    monthlyRent: rentValue,
-                                  },
-                                ]);
-                              }}
-                              className="w-full h-7 text-xs"
-                            >
-                              + Add Another Period
-                            </Button>
-
-                            {/* Summary */}
-                            {rentPeriods.length > 0 && (
-                              <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 space-y-1.5">
-                                <div className="flex items-center gap-2 text-primary">
-                                  <DollarSign className="size-4" />
-                                  <h4 className="font-semibold text-xs">
-                                    Summary
-                                  </h4>
-                                </div>
-                                <div className="space-y-1 text-xs">
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">
-                                      Total periods:
-                                    </span>
-                                    <span className="font-semibold">
-                                      {rentPeriods.length}
-                                    </span>
-                                  </div>
-                                  {(() => {
-                                    let totalMonths = 0;
-                                    let totalAmount = 0;
-                                    rentPeriods.forEach((period) => {
-                                      const monthsCount = calculateMonths(
-                                        period.startDate,
-                                        period.endDate,
-                                      );
-                                      totalMonths += monthsCount;
-                                      totalAmount +=
-                                        monthsCount * period.monthlyRent;
-                                    });
-                                    return (
-                                      <>
-                                        <div className="flex justify-between">
-                                          <span className="text-muted-foreground">
-                                            Total months:
-                                          </span>
-                                          <span className="font-semibold">
-                                            {totalMonths}
-                                          </span>
-                                        </div>
-                                        <div className="flex justify-between pt-1 border-t border-primary/20">
-                                          <span className="font-semibold">
-                                            Total tracked:
-                                          </span>
-                                          <span className="font-bold text-primary">
-                                            $
-                                            {totalAmount.toLocaleString(
-                                              "en-US",
-                                              {
-                                                minimumFractionDigits: 2,
-                                                maximumFractionDigits: 2,
-                                              },
-                                            )}
-                                          </span>
-                                        </div>
-                                      </>
-                                    );
-                                  })()}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
+                      <RentPeriodsManager
+                        enabled={rentPeriodsEnabled}
+                        onEnabledChange={setRentPeriodsEnabled}
+                        periods={rentPeriods}
+                        onPeriodsChange={setRentPeriods}
+                        leaseStartDate={formData.leaseStart}
+                        leaseEndDate={formData.leaseEnd}
+                        defaultRentAmount={
+                          formData.rent
+                            ? parseCurrencyToNumber(formData.rent)
+                            : 0
+                        }
+                      />
                     )}
                   </div>
                 </div>
