@@ -16,7 +16,7 @@ export function ReduxProvider({ children }: { children: React.ReactNode }) {
         }
         persistor={persistor}
       >
-        {children}
+        {typeof window === "undefined" ? children : children}
       </PersistGate>
     </Provider>
   );

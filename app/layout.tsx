@@ -27,8 +27,11 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // During build time for error pages, provide a simpler layout
+  const isServerSide = typeof window === "undefined";
+
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       {process.env.NEXT_PUBLIC_ANALYTICS_SCRIPT_URL &&
         process.env.NEXT_PUBLIC_ANALYTICS_WEBSITE_ID && (
           <Script
@@ -37,7 +40,10 @@ export default function RootLayout({
             data-website-id={process.env.NEXT_PUBLIC_ANALYTICS_WEBSITE_ID}
           />
         )}
-      <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
+      <body
+        className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}
+        suppressHydrationWarning
+      >
         <ReduxProvider>
           <ThemeProvider defaultTheme="dark">
             <Suspense fallback={<LoadingScreen />}>
