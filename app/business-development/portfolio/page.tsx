@@ -104,7 +104,7 @@ const formatCompactCurrency = (value: number) => {
   if (Math.abs(safeValue) >= 1000000) {
     return `$${(safeValue / 1000000).toFixed(1)}M`;
   }
-  if (Math.abs(safeValue) >= 100000) {
+  if (Math.abs(safeValue) >= 1000) {
     return `$${(safeValue / 1000).toFixed(1)}K`;
   }
   return `$${safeValue.toLocaleString("en-US", {
@@ -937,13 +937,18 @@ export default function PortfolioPage() {
     baseline,
     isPercent = false,
     isCount = false,
+    isGoodWhenIncreasing = true,
+    suffix = "",
   }: {
     current: number;
     baseline: number;
     isPercent?: boolean;
     isCount?: boolean;
+    isGoodWhenIncreasing?: boolean;
+    suffix?: string;
   }) => {
     const formatValue = (val: number) => {
+      if (suffix) return `${val.toFixed(2)}${suffix}`;
       if (isCount) return val.toFixed(0);
       if (isPercent) return formatCompactPercent(val);
       return formatCompactCurrency(val);
@@ -955,11 +960,17 @@ export default function PortfolioPage() {
     if (formattedCurrent === formattedBaseline) return null;
 
     const isIncrease = current > baseline;
+    const delta = current - baseline;
+    const formattedDelta = formatValue(Math.abs(delta));
+    const deltaPrefix = isIncrease ? "+" : "-";
+
+    // Determine if the change is good based on direction and context
+    const isGoodChange = isGoodWhenIncreasing ? isIncrease : !isIncrease;
 
     return (
       <div
         className={`flex items-center gap-0.5 whitespace-nowrap ${
-          isIncrease
+          isGoodChange
             ? "text-green-600 dark:text-green-400"
             : "text-red-600 dark:text-red-400"
         }`}
@@ -969,7 +980,10 @@ export default function PortfolioPage() {
         ) : (
           <ArrowDown className="h-3 w-3 flex-shrink-0" />
         )}
-        <span className="text-[10px]">was {formattedBaseline}</span>
+        <span className="text-[10px]">
+          {deltaPrefix}
+          {formattedDelta} (was {formattedBaseline})
+        </span>
       </div>
     );
   };
@@ -984,6 +998,7 @@ export default function PortfolioPage() {
     suffix = "",
     tooltip,
     isCount = false,
+    isGoodWhenIncreasing = true,
   }: {
     label: string;
     value: number;
@@ -994,6 +1009,7 @@ export default function PortfolioPage() {
     suffix?: string;
     tooltip?: string;
     isCount?: boolean;
+    isGoodWhenIncreasing?: boolean;
   }) => {
     const safeValue = value ?? 0;
     const safeBaselineValue = baselineValue ?? 0;
@@ -1044,6 +1060,8 @@ export default function PortfolioPage() {
               baseline={safeBaselineValue}
               isPercent={isPercent}
               isCount={isCount}
+              isGoodWhenIncreasing={isGoodWhenIncreasing}
+              suffix={suffix}
             />
           )}
         </div>
@@ -1060,6 +1078,7 @@ export default function PortfolioPage() {
     isIncome = false,
     displayHasChangedOverride = true,
     updateProperty: updatePropertyFunc,
+    isGoodWhenIncreasing = true,
   }: {
     value: number;
     index: number;
@@ -1073,6 +1092,7 @@ export default function PortfolioPage() {
       field: keyof PropertyData,
       value: number,
     ) => void;
+    isGoodWhenIncreasing?: boolean;
   }) => {
     const [isEditing, setIsEditing] = useState(false);
     const safeValue = value ?? 0;
@@ -1147,6 +1167,7 @@ export default function PortfolioPage() {
             current={safeValue}
             baseline={baselineValue}
             isPercent={isPercent}
+            isGoodWhenIncreasing={isGoodWhenIncreasing}
           />
         )}
       </button>
@@ -1160,6 +1181,7 @@ export default function PortfolioPage() {
     colorize = false,
     isExpense = false,
     displayHasChangedOverride = true,
+    isGoodWhenIncreasing = true,
   }: {
     value: number;
     baselineValue: number;
@@ -1167,6 +1189,7 @@ export default function PortfolioPage() {
     colorize?: boolean;
     isExpense?: boolean;
     displayHasChangedOverride?: boolean;
+    isGoodWhenIncreasing?: boolean;
   }) => {
     const safeValue = value ?? 0;
     const safeBaselineValue = baselineValue ?? 0;
@@ -1195,6 +1218,7 @@ export default function PortfolioPage() {
             current={safeValue}
             baseline={safeBaselineValue}
             isPercent={isPercent}
+            isGoodWhenIncreasing={isGoodWhenIncreasing}
           />
         )}
       </div>
@@ -1761,6 +1785,7 @@ export default function PortfolioPage() {
                           value={totals.totalDebt}
                           baselineValue={baselineTotals.totalDebt}
                           tooltip="Total outstanding mortgage debt across all properties"
+                          isGoodWhenIncreasing={false}
                         />
                         <SummaryMetric
                           label="Equity"
@@ -1774,6 +1799,7 @@ export default function PortfolioPage() {
                           baselineValue={baselineLeverage}
                           isPercent
                           tooltip="Percentage of assets financed by debt (Debt / Assets). Higher leverage amplifies returns and risk."
+                          isGoodWhenIncreasing={false}
                         />
                       </div>
 
@@ -1815,6 +1841,7 @@ export default function PortfolioPage() {
                           baselineValue={baselineTotals.totalExpensesMonthly}
                           isExpense
                           tooltip="Total monthly operating expenses (HOA + Tax + Insurance + Other)"
+                          isGoodWhenIncreasing={false}
                         />
                         <SummaryMetric
                           label="OpEx/yr"
@@ -1824,6 +1851,7 @@ export default function PortfolioPage() {
                           }
                           isExpense
                           tooltip="Total annual operating expenses (Monthly OpEx × 12)"
+                          isGoodWhenIncreasing={false}
                         />
                         <SummaryMetric
                           label="OpEx Ratio"
@@ -1832,6 +1860,7 @@ export default function PortfolioPage() {
                           isPercent
                           isExpense
                           tooltip="Operating expenses as a percentage of gross rent (OpEx / Gross Rent). Lower is better."
+                          isGoodWhenIncreasing={false}
                         />
                         <SummaryMetric
                           label="NOI/mo"
@@ -1861,6 +1890,7 @@ export default function PortfolioPage() {
                           baselineValue={baselineTotals.debtService}
                           isExpense
                           tooltip="Total monthly mortgage payments across all properties"
+                          isGoodWhenIncreasing={false}
                         />
                         <SummaryMetric
                           label="DS/yr"
@@ -1868,6 +1898,7 @@ export default function PortfolioPage() {
                           baselineValue={baselineTotals.debtService * 12}
                           isExpense
                           tooltip="Total annual mortgage payments (Monthly DS × 12)"
+                          isGoodWhenIncreasing={false}
                         />
                         <div className="flex items-center justify-between gap-1">
                           <div className="flex items-center gap-0.5">
@@ -1919,7 +1950,9 @@ export default function PortfolioPage() {
                                     <ArrowDown className="h-3 w-3 flex-shrink-0" />
                                   )}
                                   <span className="text-[10px]">
-                                    was {baselineDscr.toFixed(2)}x
+                                    {dscr > baselineDscr ? "+" : "-"}
+                                    {Math.abs(dscr - baselineDscr).toFixed(2)}x
+                                    (was {baselineDscr.toFixed(2)}x)
                                   </span>
                                 </div>
                               )}
@@ -1985,6 +2018,7 @@ export default function PortfolioPage() {
                           baselineValue={baselineGrm}
                           suffix="x"
                           tooltip="Gross Rent Multiplier: Property value divided by annual rent (Market Value / Annual Rent). Lower is better for investors."
+                          isGoodWhenIncreasing={false}
                         />
                       </div>
                     </>
@@ -2241,6 +2275,7 @@ export default function PortfolioPage() {
                                     index={originalIndex}
                                     field="debt"
                                     isExpense
+                                    isGoodWhenIncreasing={false}
                                   />
                                 </td>
                                 <td className="text-right py-0 px-0.5 whitespace-nowrap">
@@ -2266,6 +2301,7 @@ export default function PortfolioPage() {
                                     index={originalIndex}
                                     field="hoa"
                                     isExpense
+                                    isGoodWhenIncreasing={false}
                                   />
                                 </td>
                                 <td className="text-right py-0 px-0.5 whitespace-nowrap">
@@ -2274,6 +2310,7 @@ export default function PortfolioPage() {
                                     index={originalIndex}
                                     field="reTax"
                                     isExpense
+                                    isGoodWhenIncreasing={false}
                                   />
                                 </td>
                                 <td className="text-right py-0 px-0.5 whitespace-nowrap">
@@ -2282,6 +2319,7 @@ export default function PortfolioPage() {
                                     index={originalIndex}
                                     field="insurance"
                                     isExpense
+                                    isGoodWhenIncreasing={false}
                                   />
                                 </td>
                                 <td className="text-right py-0 px-0.5 whitespace-nowrap">
@@ -2290,6 +2328,7 @@ export default function PortfolioPage() {
                                     index={originalIndex}
                                     field="otherExpenses"
                                     isExpense
+                                    isGoodWhenIncreasing={false}
                                   />
                                 </td>
                                 <td className="text-right py-0 px-0.5 whitespace-nowrap">
@@ -2307,6 +2346,7 @@ export default function PortfolioPage() {
                                       originalProperty?.debtService ?? 0
                                     }
                                     isExpense
+                                    isGoodWhenIncreasing={false}
                                   />
                                 </td>
                                 <td className="text-right py-0 px-0.5 whitespace-nowrap">
