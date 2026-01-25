@@ -13,7 +13,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 interface ExpenseData {
-  id: number;
+  id: string;
   description: string;
   amount: string;
   category: string;
@@ -87,7 +87,7 @@ export function RecentExpenses() {
         const sortedExpenses = expensesData.sort(
           (a: ExpenseResponse, b: ExpenseResponse) =>
             new Date(b.expenseDate).getTime() -
-            new Date(a.expenseDate).getTime()
+            new Date(a.expenseDate).getTime(),
         );
 
         // Transform to expense data format
@@ -101,7 +101,7 @@ export function RecentExpenses() {
             property: expense.propertyAddress || "General",
             expenseDate: expense.expenseDate,
             relativeDate: getRelativeTime(expense.expenseDate),
-          })
+          }),
         );
 
         setExpenses(expensesList);
@@ -200,7 +200,7 @@ export function RecentExpenses() {
                       return new Date(
                         year,
                         month - 1,
-                        day
+                        day,
                       ).toLocaleDateString();
                     })()}
                   </span>
@@ -215,7 +215,7 @@ export function RecentExpenses() {
                 <Badge
                   variant="secondary"
                   className={`${getCategoryColor(
-                    expense.categoryCode
+                    expense.categoryCode,
                   )} text-xs`}
                 >
                   {expense.category}

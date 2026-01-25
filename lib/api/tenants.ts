@@ -7,13 +7,12 @@ import type {
 
 export const tenantsApi = {
   getAll: (params?: {
-    propertyId?: number;
+    propertyId?: string;
     activeOnly?: boolean;
     unassignedOnly?: boolean;
   }) => {
     const searchParams = new URLSearchParams();
-    if (params?.propertyId)
-      searchParams.set("propertyId", params.propertyId.toString());
+    if (params?.propertyId) searchParams.set("propertyId", params.propertyId);
     if (params?.activeOnly) searchParams.set("activeOnly", "true");
     if (params?.unassignedOnly) searchParams.set("unassignedOnly", "true");
 
@@ -21,19 +20,19 @@ export const tenantsApi = {
     return api.get<TenantResponse[]>(`/api/tenants${query ? `?${query}` : ""}`);
   },
 
-  getById: (id: number) => api.get<TenantResponse>(`/api/tenants/${id}`),
+  getById: (id: string) => api.get<TenantResponse>(`/api/tenants/${id}`),
 
   create: (data: CreateTenantRequest) =>
     api.post<TenantResponse>("/api/tenants", data),
 
-  update: (id: number, data: UpdateTenantRequest) =>
+  update: (id: string, data: UpdateTenantRequest) =>
     api.put<TenantResponse>(`/api/tenants/${id}`, data),
 
-  archive: (id: number) => api.delete<void>(`/api/tenants/${id}`),
+  archive: (id: string) => api.delete<void>(`/api/tenants/${id}`),
 
-  unassign: (id: number) =>
+  unassign: (id: string) =>
     api.put<TenantResponse>(`/api/tenants/${id}/unassign`),
 
-  deletePermanent: (id: number) =>
+  deletePermanent: (id: string) =>
     api.delete<void>(`/api/tenants/${id}/permanent`),
 };

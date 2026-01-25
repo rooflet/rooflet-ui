@@ -29,8 +29,8 @@ export function PortfolioSwitcher() {
   }, [dispatch, portfolios.length]);
 
   const handleSwitchPortfolio = async (
-    portfolioId: number,
-    portfolioName: string
+    portfolioId: string,
+    portfolioName: string,
   ) => {
     if (portfolioId === activePortfolioId) {
       setIsOpen(false);

@@ -486,7 +486,7 @@ export default function PropertiesPage() {
     });
   };
 
-  const isPropertyOccupied = (propertyId: number): boolean => {
+  const isPropertyOccupied = (propertyId: string): boolean => {
     // Check if any tenant is currently occupying the property and that the tenant is not archived
     return tenants.some(
       (tenant) => tenant.propertyId === propertyId && !tenant.archived,

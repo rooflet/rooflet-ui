@@ -110,7 +110,7 @@ type Property = PropertyResponse;
 export default function TenantsPage() {
   const dispatch = useAppDispatch();
   const { tenants, isLoading, error } = useAppSelector(
-    (state) => state.tenants
+    (state) => state.tenants,
   );
   const { properties } = useAppSelector((state) => state.properties);
   const { activePortfolioId } = useAppSelector((state) => state.portfolio);
@@ -195,7 +195,7 @@ export default function TenantsPage() {
     const warnings: ValidationWarning[] = [];
     const sortedPeriods = [...periods].sort(
       (a, b) =>
-        new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+        new Date(a.startDate).getTime() - new Date(b.startDate).getTime(),
     );
 
     // Check for overlaps
@@ -226,7 +226,7 @@ export default function TenantsPage() {
       const nextStart = new Date(next.startDate);
 
       const daysDiff = Math.floor(
-        (nextStart.getTime() - currentEnd.getTime()) / (1000 * 60 * 60 * 24)
+        (nextStart.getTime() - currentEnd.getTime()) / (1000 * 60 * 60 * 24),
       );
 
       if (daysDiff > 1) {
@@ -329,7 +329,7 @@ export default function TenantsPage() {
     if (formData.leaseStart || formData.leaseEnd) {
       const leaseDateValidation = validateLeaseDates(
         formData.leaseStart,
-        formData.leaseEnd
+        formData.leaseEnd,
       );
 
       if (!leaseDateValidation.startDateValidation.isValid) {
@@ -437,7 +437,7 @@ export default function TenantsPage() {
 
         // Validate period is not unreasonably long (e.g., over 10 years)
         const daysDiff = Math.floor(
-          (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+          (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24),
         );
         if (daysDiff > 3650) {
           toast({
@@ -480,9 +480,7 @@ export default function TenantsPage() {
         phoneNumber: formData.phone
           ? extractPhoneNumbers(formData.phone)
           : undefined,
-        propertyId: formData.propertyId
-          ? Number(formData.propertyId)
-          : undefined,
+        propertyId: formData.propertyId || undefined,
         monthlyRent: formData.rent ? parseCurrencyToNumber(formData.rent) : 0,
         leaseStartDate: formData.leaseStart,
         leaseEndDate: formData.leaseEnd,
@@ -496,7 +494,7 @@ export default function TenantsPage() {
         const generateMonthlyItems = (
           startDate: string,
           endDate: string,
-          monthlyRent: number
+          monthlyRent: number,
         ) => {
           const items = [];
 
@@ -517,7 +515,7 @@ export default function TenantsPage() {
             items.push({
               paymentDate: `${currentYear}-${String(currentMonth).padStart(
                 2,
-                "0"
+                "0",
               )}-01`,
               expectedAmount: monthlyRent,
               paidAmount: monthlyRent, // Mark as paid for historical records
@@ -540,8 +538,8 @@ export default function TenantsPage() {
           generateMonthlyItems(
             period.startDate,
             period.endDate,
-            period.monthlyRent
-          )
+            period.monthlyRent,
+          ),
         );
 
         // Create all rent collections in one bulk request
@@ -603,7 +601,7 @@ export default function TenantsPage() {
     if (formData.leaseStart || formData.leaseEnd) {
       const leaseDateValidation = validateLeaseDates(
         formData.leaseStart,
-        formData.leaseEnd
+        formData.leaseEnd,
       );
 
       if (!leaseDateValidation.startDateValidation.isValid) {
@@ -641,9 +639,7 @@ export default function TenantsPage() {
         phoneNumber: formData.phone
           ? extractPhoneNumbers(formData.phone)
           : undefined,
-        propertyId: formData.propertyId
-          ? Number(formData.propertyId)
-          : undefined,
+        propertyId: formData.propertyId || undefined,
         monthlyRent: formData.rent
           ? parseCurrencyToNumber(formData.rent)
           : undefined,
@@ -652,7 +648,7 @@ export default function TenantsPage() {
       };
 
       await dispatch(
-        updateTenant({ id: selectedTenant.id, data: updateData })
+        updateTenant({ id: selectedTenant.id, data: updateData }),
       ).unwrap();
       setIsEditDialogOpen(false);
       setSelectedTenant(null);
@@ -935,10 +931,7 @@ export default function TenantsPage() {
                           </SelectTrigger>
                           <SelectContent>
                             {properties.map((property) => (
-                              <SelectItem
-                                key={property.id}
-                                value={property.id.toString()}
-                              >
+                              <SelectItem key={property.id} value={property.id}>
                                 {property.address1}{" "}
                                 {property.address2 && `- ${property.address2}`}
                               </SelectItem>
@@ -1055,7 +1048,7 @@ export default function TenantsPage() {
                                 const warnings =
                                   validateRentPeriods(rentPeriods);
                                 const periodWarnings = warnings.filter((w) =>
-                                  w.periodIndices.includes(index)
+                                  w.periodIndices.includes(index),
                                 );
 
                                 return (
@@ -1091,8 +1084,8 @@ export default function TenantsPage() {
                                             onClick={() => {
                                               setRentPeriods(
                                                 rentPeriods.filter(
-                                                  (p) => p.id !== period.id
-                                                )
+                                                  (p) => p.id !== period.id,
+                                                ),
                                               );
                                             }}
                                             className="h-6 text-xs border-destructive/30 text-destructive"
@@ -1126,8 +1119,8 @@ export default function TenantsPage() {
                                                             startDate:
                                                               e.target.value,
                                                           }
-                                                        : p
-                                                    )
+                                                        : p,
+                                                    ),
                                                   );
                                                 }}
                                                 className="h-7 text-xs"
@@ -1153,8 +1146,8 @@ export default function TenantsPage() {
                                                             endDate:
                                                               e.target.value,
                                                           }
-                                                        : p
-                                                    )
+                                                        : p,
+                                                    ),
                                                   );
                                                 }}
                                                 className="h-7 text-xs"
@@ -1170,18 +1163,18 @@ export default function TenantsPage() {
                                               value={
                                                 period.monthlyRent
                                                   ? formatCurrencyInput(
-                                                      period.monthlyRent.toString()
+                                                      period.monthlyRent.toString(),
                                                     )
                                                   : ""
                                               }
                                               onChange={(e) => {
                                                 const formatted =
                                                   formatCurrencyInput(
-                                                    e.target.value
+                                                    e.target.value,
                                                   );
                                                 const value =
                                                   parseCurrencyToNumber(
-                                                    formatted
+                                                    formatted,
                                                   );
                                                 setRentPeriods(
                                                   rentPeriods.map((p) =>
@@ -1190,14 +1183,14 @@ export default function TenantsPage() {
                                                           ...p,
                                                           monthlyRent: value,
                                                         }
-                                                      : p
-                                                  )
+                                                      : p,
+                                                  ),
                                                 );
                                               }}
                                               onBlur={(e) => {
                                                 const padded =
                                                   ensureDecimalPadding(
-                                                    e.target.value
+                                                    e.target.value,
                                                   );
                                                 const value =
                                                   parseCurrencyToNumber(padded);
@@ -1208,8 +1201,8 @@ export default function TenantsPage() {
                                                           ...p,
                                                           monthlyRent: value,
                                                         }
-                                                      : p
-                                                  )
+                                                      : p,
+                                                  ),
                                                 );
                                               }}
                                               placeholder="$2,000.00"
@@ -1236,11 +1229,11 @@ export default function TenantsPage() {
                                             </span>
                                             <span className="font-medium">
                                               {formatDateWithMonth(
-                                                period.startDate
+                                                period.startDate,
                                               )}{" "}
                                               →{" "}
                                               {formatDateWithMonth(
-                                                period.endDate
+                                                period.endDate,
                                               )}
                                             </span>
                                           </div>
@@ -1255,7 +1248,7 @@ export default function TenantsPage() {
                                                 {
                                                   minimumFractionDigits: 2,
                                                   maximumFractionDigits: 2,
-                                                }
+                                                },
                                               )}
                                             </span>
                                           </div>
@@ -1266,7 +1259,7 @@ export default function TenantsPage() {
                                             <span>
                                               {calculateMonths(
                                                 period.startDate,
-                                                period.endDate
+                                                period.endDate,
                                               )}{" "}
                                               months
                                             </span>
@@ -1285,7 +1278,7 @@ export default function TenantsPage() {
                                                       {warning.message}
                                                     </span>
                                                   </div>
-                                                )
+                                                ),
                                               )}
                                             </div>
                                           )}
@@ -1308,7 +1301,7 @@ export default function TenantsPage() {
                                 const nextStartDate = lastPeriod
                                   ? (() => {
                                       const lastEnd = new Date(
-                                        lastPeriod.endDate
+                                        lastPeriod.endDate,
                                       );
                                       lastEnd.setDate(lastEnd.getDate() + 1);
                                       return toLocalDateString(lastEnd);
@@ -1357,7 +1350,7 @@ export default function TenantsPage() {
                                     rentPeriods.forEach((period) => {
                                       const monthsCount = calculateMonths(
                                         period.startDate,
-                                        period.endDate
+                                        period.endDate,
                                       );
                                       totalMonths += monthsCount;
                                       totalAmount +=
@@ -1384,7 +1377,7 @@ export default function TenantsPage() {
                                               {
                                                 minimumFractionDigits: 2,
                                                 maximumFractionDigits: 2,
-                                              }
+                                              },
                                             )}
                                           </span>
                                         </div>
@@ -1481,7 +1474,7 @@ export default function TenantsPage() {
                               {tenant.phoneNumber
                                 ? (() => {
                                     const validation = validateAndFormatPhone(
-                                      tenant.phoneNumber
+                                      tenant.phoneNumber,
                                     );
                                     return (
                                       validation.formatted || tenant.phoneNumber
@@ -1613,7 +1606,7 @@ export default function TenantsPage() {
                                     ? (() => {
                                         const validation =
                                           validateAndFormatPhone(
-                                            tenant.phoneNumber
+                                            tenant.phoneNumber,
                                           );
                                         return (
                                           validation.formatted ||
@@ -1638,7 +1631,7 @@ export default function TenantsPage() {
                                     {
                                       minimumFractionDigits: 2,
                                       maximumFractionDigits: 2,
-                                    }
+                                    },
                                   )}/mo`
                                 : "N/A"}
                             </TableCell>
@@ -1747,10 +1740,7 @@ export default function TenantsPage() {
                       </SelectTrigger>
                       <SelectContent>
                         {properties.map((property) => (
-                          <SelectItem
-                            key={property.id}
-                            value={property.id.toString()}
-                          >
+                          <SelectItem key={property.id} value={property.id}>
                             {property.address1}{" "}
                             {property.address2 && `- ${property.address2}`}
                           </SelectItem>

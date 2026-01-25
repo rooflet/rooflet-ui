@@ -25,10 +25,10 @@ export const fetchProperties = createAsyncThunk(
       return await propertiesApi.getAll(activeOnly);
     } catch (error) {
       return rejectWithValue(
-        error instanceof Error ? error.message : "Failed to fetch properties"
+        error instanceof Error ? error.message : "Failed to fetch properties",
       );
     }
-  }
+  },
 );
 
 export const createProperty = createAsyncThunk(
@@ -38,67 +38,67 @@ export const createProperty = createAsyncThunk(
       return await propertiesApi.create(data);
     } catch (error) {
       return rejectWithValue(
-        error instanceof Error ? error.message : "Failed to create property"
+        error instanceof Error ? error.message : "Failed to create property",
       );
     }
-  }
+  },
 );
 
 export const updateProperty = createAsyncThunk(
   "properties/update",
   async (
-    { id, data }: { id: number; data: UpdatePropertyRequest },
-    { rejectWithValue }
+    { id, data }: { id: string; data: UpdatePropertyRequest },
+    { rejectWithValue },
   ) => {
     try {
       return await propertiesApi.update(id, data);
     } catch (error) {
       return rejectWithValue(
-        error instanceof Error ? error.message : "Failed to update property"
+        error instanceof Error ? error.message : "Failed to update property",
       );
     }
-  }
+  },
 );
 
 export const archiveProperty = createAsyncThunk(
   "properties/archive",
-  async (id: number, { rejectWithValue }) => {
+  async (id: string, { rejectWithValue }) => {
     try {
       await propertiesApi.archive(id);
       return id;
     } catch (error) {
       return rejectWithValue(
-        error instanceof Error ? error.message : "Failed to archive property"
+        error instanceof Error ? error.message : "Failed to archive property",
       );
     }
-  }
+  },
 );
 
 export const unarchiveProperty = createAsyncThunk(
   "properties/unarchive",
-  async (id: number, { rejectWithValue }) => {
+  async (id: string, { rejectWithValue }) => {
     try {
       return await propertiesApi.update(id, { archived: false });
     } catch (error) {
       return rejectWithValue(
-        error instanceof Error ? error.message : "Failed to unarchive property"
+        error instanceof Error ? error.message : "Failed to unarchive property",
       );
     }
-  }
+  },
 );
 
 export const deleteProperty = createAsyncThunk(
   "properties/delete",
-  async (id: number, { rejectWithValue }) => {
+  async (id: string, { rejectWithValue }) => {
     try {
       await propertiesApi.deletePermanent(id);
       return id;
     } catch (error) {
       return rejectWithValue(
-        error instanceof Error ? error.message : "Failed to delete property"
+        error instanceof Error ? error.message : "Failed to delete property",
       );
     }
-  }
+  },
 );
 
 const propertiesSlice = createSlice({
@@ -141,7 +141,7 @@ const propertiesSlice = createSlice({
       .addCase(updateProperty.fulfilled, (state, action) => {
         state.isLoading = false;
         const index = state.properties.findIndex(
-          (p) => p.id === action.payload.id
+          (p) => p.id === action.payload.id,
         );
         if (index !== -1) {
           state.properties[index] = action.payload;
@@ -154,7 +154,7 @@ const propertiesSlice = createSlice({
       // Archive Property
       .addCase(archiveProperty.fulfilled, (state, action) => {
         const index = state.properties.findIndex(
-          (p) => p.id === action.payload
+          (p) => p.id === action.payload,
         );
         if (index !== -1) {
           state.properties[index].archived = true;
@@ -163,7 +163,7 @@ const propertiesSlice = createSlice({
       // Unarchive Property
       .addCase(unarchiveProperty.fulfilled, (state, action) => {
         const index = state.properties.findIndex(
-          (p) => p.id === action.payload.id
+          (p) => p.id === action.payload.id,
         );
         if (index !== -1) {
           state.properties[index] = action.payload;
@@ -172,7 +172,7 @@ const propertiesSlice = createSlice({
       // Delete Property
       .addCase(deleteProperty.fulfilled, (state, action) => {
         state.properties = state.properties.filter(
-          (p) => p.id !== action.payload
+          (p) => p.id !== action.payload,
         );
       });
   },

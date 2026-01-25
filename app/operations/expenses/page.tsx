@@ -116,7 +116,7 @@ export default function ExpensesPage() {
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
 
   const { expenses, isLoading, error } = useAppSelector(
-    (state) => state.expenses
+    (state) => state.expenses,
   );
   const { properties } = useAppSelector((state) => state.properties);
   const { activePortfolioId } = useAppSelector((state) => state.portfolio);
@@ -143,7 +143,7 @@ export default function ExpensesPage() {
       fetchExpenses({
         startDate: dateRange.start,
         endDate: dateRange.end,
-      })
+      }),
     );
     dispatch(fetchProperties(true));
   }, [selectedYear, selectedMonth, activePortfolioId, dispatch]);
@@ -189,9 +189,7 @@ export default function ExpensesPage() {
 
     try {
       const newExpense: CreateExpenseRequest = {
-        propertyId: formData.propertyId
-          ? Number(formData.propertyId)
-          : undefined,
+        propertyId: formData.propertyId || undefined,
         amount: parseCurrencyToNumber(formData.amount),
         category: formData.category as ExpenseCategory,
         expenseDate: formData.date,
@@ -249,9 +247,7 @@ export default function ExpensesPage() {
 
     try {
       const updateData: UpdateExpenseRequest = {
-        propertyId: formData.propertyId
-          ? Number(formData.propertyId)
-          : undefined,
+        propertyId: formData.propertyId || undefined,
         amount: parseCurrencyToNumber(formData.amount),
         category: formData.category as ExpenseCategory,
         expenseDate: formData.date,
@@ -259,7 +255,7 @@ export default function ExpensesPage() {
       };
 
       await dispatch(
-        updateExpense({ id: selectedExpense.id, data: updateData })
+        updateExpense({ id: selectedExpense.id, data: updateData }),
       ).unwrap();
       setIsEditDialogOpen(false);
       setSelectedExpense(null);
@@ -419,12 +415,12 @@ export default function ExpensesPage() {
 
   const sortedExpenses = [...expenses].sort(
     (a, b) =>
-      new Date(b.expenseDate).getTime() - new Date(a.expenseDate).getTime()
+      new Date(b.expenseDate).getTime() - new Date(a.expenseDate).getTime(),
   );
   const totalPages = Math.ceil(sortedExpenses.length / itemsPerPage);
   const paginatedExpenses = sortedExpenses.slice(
     (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+    currentPage * itemsPerPage,
   );
 
   if (isLoading) {
@@ -450,7 +446,7 @@ export default function ExpensesPage() {
                 fetchExpenses({
                   startDate: dateRange.start,
                   endDate: dateRange.end,
-                })
+                }),
               );
               dispatch(fetchProperties(true));
             }}
@@ -548,7 +544,7 @@ export default function ExpensesPage() {
                         >
                           <option value="">Select a property</option>
                           {properties.map((prop) => (
-                            <option key={prop.id} value={prop.id.toString()}>
+                            <option key={prop.id} value={prop.id}>
                               {prop.address1}{" "}
                               {prop.address2 && `- ${prop.address2}`}
                             </option>
@@ -738,7 +734,7 @@ export default function ExpensesPage() {
                               return new Date(
                                 year,
                                 month - 1,
-                                day
+                                day,
                               ).toLocaleDateString();
                             })()}
                           </TableCell>
@@ -815,7 +811,7 @@ export default function ExpensesPage() {
                   <div className="flex items-center gap-1">
                     {Array.from(
                       { length: Math.min(totalPages, 5) },
-                      (_, i) => i + 1
+                      (_, i) => i + 1,
                     ).map((page) => (
                       <Button
                         key={page}
@@ -866,7 +862,7 @@ export default function ExpensesPage() {
                     >
                       <option value="">Select a property</option>
                       {properties.map((prop) => (
-                        <option key={prop.id} value={prop.id.toString()}>
+                        <option key={prop.id} value={prop.id}>
                           {prop.address1}{" "}
                           {prop.address2 && `- ${prop.address2}`}
                         </option>

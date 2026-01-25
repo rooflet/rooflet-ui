@@ -12,7 +12,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 interface PaymentData {
-  id: number;
+  id: string;
   tenant: string;
   amount: string;
   property: string;
@@ -53,12 +53,12 @@ export function PaymentsList() {
         const paymentsWithDate = rentCollections
           .filter(
             (collection: RentCollectionResponse) =>
-              collection.paidAmount > 0 && collection.paymentDate
+              collection.paidAmount > 0 && collection.paymentDate,
           )
           .sort(
             (a: RentCollectionResponse, b: RentCollectionResponse) =>
               new Date(b.paymentDate!).getTime() -
-              new Date(a.paymentDate!).getTime()
+              new Date(a.paymentDate!).getTime(),
           );
 
         // Transform to payment data format
@@ -74,7 +74,7 @@ export function PaymentsList() {
                 : "partial",
             paymentDate: collection.paymentDate!,
             relativeDate: getRelativeTime(collection.paymentDate!),
-          })
+          }),
         );
 
         setPayments(paymentsData);
@@ -170,7 +170,7 @@ export function PaymentsList() {
                       return new Date(
                         year,
                         month - 1,
-                        day
+                        day,
                       ).toLocaleDateString();
                     })()}
                   </span>

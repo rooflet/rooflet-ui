@@ -20,7 +20,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 interface PropertyOverviewData {
-  id: number;
+  id: string;
   name: string;
   address: string;
   monthlyRent: number;
@@ -85,36 +85,37 @@ export function PropertiesOverview() {
             // Calculate current month expenses for this property
             const currentMonthExpenses = expensesData
               .filter(
-                (expense: ExpenseResponse) => expense.propertyId === property.id
+                (expense: ExpenseResponse) =>
+                  expense.propertyId === property.id,
               )
               .reduce(
                 (sum: number, expense: ExpenseResponse) => sum + expense.amount,
-                0
+                0,
               );
 
             // Calculate collected rent for this property in current month
             const collectedRent = rentCollectionsData
               .filter(
                 (collection: RentCollectionResponse) =>
-                  collection.propertyId === property.id
+                  collection.propertyId === property.id,
               )
               .reduce(
                 (sum: number, collection: RentCollectionResponse) =>
                   sum + collection.paidAmount,
-                0
+                0,
               );
 
             // Find tenants for this property and get maximum expected rent
             const propertyTenants = tenantsData.filter(
               (tenant: TenantResponse) =>
-                tenant.propertyId === property.id && !tenant.archived
+                tenant.propertyId === property.id && !tenant.archived,
             );
             const monthlyRent =
               propertyTenants.length > 0
                 ? Math.max(
                     ...propertyTenants.map(
-                      (t: TenantResponse) => t.monthlyRent || 0
-                    )
+                      (t: TenantResponse) => t.monthlyRent || 0,
+                    ),
                   )
                 : 0;
 
@@ -141,7 +142,7 @@ export function PropertiesOverview() {
               marketValue: property.marketValue || 0,
               cocReturn: Math.round(cocReturn * 100) / 100, // Round to 2 decimal places
             };
-          }
+          },
         );
 
         setProperties(overviewData);
@@ -275,7 +276,7 @@ export function PropertiesOverview() {
                       <TrendingUp className="w-3.5 h-3.5 text-muted-foreground" />
                       <p
                         className={`text-sm font-semibold ${getReturnColor(
-                          property.cocReturn
+                          property.cocReturn,
                         )}`}
                       >
                         {property.cocReturn}%

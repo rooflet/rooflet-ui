@@ -63,9 +63,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 interface TenantWithPayments {
-  tenantId: number;
+  tenantId: string;
   tenantName: string;
-  propertyId: number;
+  propertyId: string;
   propertyAddress: string;
   expectedAmount: number;
   totalPaid: number;
@@ -99,7 +99,7 @@ export default function RentCollectionPage() {
 
   // Get Redux state
   const { rentCollections, isLoading, error } = useAppSelector(
-    (state) => state.rentCollections
+    (state) => state.rentCollections,
   );
   const { tenants: allTenants } = useAppSelector((state) => state.tenants);
   const { activePortfolioId } = useAppSelector((state) => state.portfolio);
@@ -142,7 +142,7 @@ export default function RentCollectionPage() {
       fetchRentCollections({
         startPeriod: dateRange.start,
         endPeriod: dateRange.end,
-      })
+      }),
     );
   }, [selectedYear, selectedMonth, activePortfolioId, dispatch]);
 
@@ -172,7 +172,7 @@ export default function RentCollectionPage() {
     setSelectedMonth(newMonth);
     // Convert 0-based month to 1-based for URL
     router.push(
-      `/operations/rent-collection?year=${newYear}&month=${newMonth + 1}`
+      `/operations/rent-collection?year=${newYear}&month=${newMonth + 1}`,
     );
   };
 
@@ -194,7 +194,7 @@ export default function RentCollectionPage() {
       buildRoute(ROUTES.OPERATIONS.RENT_COLLECTION, {
         year: newYear,
         month: newMonth + 1,
-      })
+      }),
     );
   };
 
@@ -210,7 +210,7 @@ export default function RentCollectionPage() {
       buildRoute(ROUTES.OPERATIONS.RENT_COLLECTION, {
         year: newYear,
         month: newMonth + 1,
-      })
+      }),
     );
   };
 
@@ -277,7 +277,7 @@ export default function RentCollectionPage() {
           paidAmount: amount,
           paymentDate: paymentDate,
           notes: paymentNotes,
-        })
+        }),
       ).unwrap();
 
       setIsPaymentDialogOpen(false);
@@ -300,7 +300,7 @@ export default function RentCollectionPage() {
     }
   };
 
-  const handleDeletePayment = async (paymentId: number) => {
+  const handleDeletePayment = async (paymentId: string) => {
     try {
       await dispatch(deleteRentCollection(paymentId)).unwrap();
       toast({
@@ -327,7 +327,7 @@ export default function RentCollectionPage() {
           data: {
             notes: paymentNotes,
           },
-        })
+        }),
       ).unwrap();
 
       setIsEditPaymentDialogOpen(false);
@@ -375,7 +375,7 @@ export default function RentCollectionPage() {
           paidAmount: remaining,
           paymentDate: paymentDate,
           notes: "Marked as paid in full",
-        })
+        }),
       ).unwrap();
 
       toast({
@@ -473,16 +473,16 @@ export default function RentCollectionPage() {
   const stats = {
     totalDue: tenantGroupsArray.reduce(
       (sum, group) => sum + group.expectedAmount,
-      0
+      0,
     ),
     totalCollected: tenantGroupsArray.reduce(
       (sum, group) => sum + group.totalPaid,
-      0
+      0,
     ),
     paid: tenantGroupsArray.filter((group) => group.isPaidInFull).length,
     pending: tenantGroupsArray.filter((group) => group.totalPaid === 0).length,
     partial: tenantGroupsArray.filter(
-      (group) => group.totalPaid > 0 && !group.isPaidInFull
+      (group) => group.totalPaid > 0 && !group.isPaidInFull,
     ).length,
   };
 
@@ -516,7 +516,7 @@ export default function RentCollectionPage() {
                 fetchRentCollections({
                   startPeriod: dateRange.start,
                   endPeriod: dateRange.end,
-                })
+                }),
               );
             }}
           >
@@ -665,13 +665,13 @@ export default function RentCollectionPage() {
                                 element.classList.add(
                                   "ring-2",
                                   "ring-primary",
-                                  "ring-offset-2"
+                                  "ring-offset-2",
                                 );
                                 setTimeout(() => {
                                   element.classList.remove(
                                     "ring-2",
                                     "ring-primary",
-                                    "ring-offset-2"
+                                    "ring-offset-2",
                                   );
                                 }, 2000);
                               }
@@ -696,8 +696,8 @@ export default function RentCollectionPage() {
                                   {tenant.isPaidInFull
                                     ? "Paid"
                                     : remaining > 0 && tenant.totalPaid > 0
-                                    ? "Partial"
-                                    : "Pending"}
+                                      ? "Partial"
+                                      : "Pending"}
                                 </span>
                               </div>
                               <div className="flex justify-between gap-4">

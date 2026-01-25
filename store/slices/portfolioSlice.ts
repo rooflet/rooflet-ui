@@ -4,7 +4,7 @@ import { getCurrentUserFromApi } from "@/lib/api/users";
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 
 export interface PortfolioState {
-  activePortfolioId: number | null;
+  activePortfolioId: string | null;
   activePortfolioName: string;
   portfolios: PortfolioResponse[];
   isLoading: boolean;
@@ -36,10 +36,10 @@ export const loadPortfolios = createAsyncThunk(
       };
     } catch (error) {
       return rejectWithValue(
-        error instanceof Error ? error.message : "Failed to load portfolios"
+        error instanceof Error ? error.message : "Failed to load portfolios",
       );
     }
-  }
+  },
 );
 
 export const switchPortfolio = createAsyncThunk(
@@ -48,18 +48,18 @@ export const switchPortfolio = createAsyncThunk(
     {
       portfolioId,
       portfolioName,
-    }: { portfolioId: number; portfolioName: string },
-    { rejectWithValue }
+    }: { portfolioId: string; portfolioName: string },
+    { rejectWithValue },
   ) => {
     try {
       await portfoliosApi.switchPortfolio(portfolioId);
       return { portfolioId, portfolioName };
     } catch (error) {
       return rejectWithValue(
-        error instanceof Error ? error.message : "Failed to switch portfolio"
+        error instanceof Error ? error.message : "Failed to switch portfolio",
       );
     }
-  }
+  },
 );
 
 const portfolioSlice = createSlice({

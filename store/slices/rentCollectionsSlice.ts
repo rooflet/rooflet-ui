@@ -24,9 +24,9 @@ export const fetchRentCollections = createAsyncThunk(
     params: {
       startPeriod?: string;
       endPeriod?: string;
-      tenantId?: number;
+      tenantId?: string;
     } = {},
-    { rejectWithValue }
+    { rejectWithValue },
   ) => {
     try {
       return await rentCollectionsApi.getAll(params);
@@ -34,10 +34,10 @@ export const fetchRentCollections = createAsyncThunk(
       return rejectWithValue(
         error instanceof Error
           ? error.message
-          : "Failed to fetch rent collections"
+          : "Failed to fetch rent collections",
       );
     }
-  }
+  },
 );
 
 export const createRentCollection = createAsyncThunk(
@@ -49,17 +49,17 @@ export const createRentCollection = createAsyncThunk(
       return rejectWithValue(
         error instanceof Error
           ? error.message
-          : "Failed to create rent collection"
+          : "Failed to create rent collection",
       );
     }
-  }
+  },
 );
 
 export const updateRentCollection = createAsyncThunk(
   "rentCollections/update",
   async (
-    { id, data }: { id: number; data: UpdateRentCollectionRequest },
-    { rejectWithValue }
+    { id, data }: { id: string; data: UpdateRentCollectionRequest },
+    { rejectWithValue },
   ) => {
     try {
       return await rentCollectionsApi.update(id, data);
@@ -67,15 +67,15 @@ export const updateRentCollection = createAsyncThunk(
       return rejectWithValue(
         error instanceof Error
           ? error.message
-          : "Failed to update rent collection"
+          : "Failed to update rent collection",
       );
     }
-  }
+  },
 );
 
 export const deleteRentCollection = createAsyncThunk(
   "rentCollections/delete",
-  async (id: number, { rejectWithValue }) => {
+  async (id: string, { rejectWithValue }) => {
     try {
       await rentCollectionsApi.delete(id);
       return id;
@@ -83,10 +83,10 @@ export const deleteRentCollection = createAsyncThunk(
       return rejectWithValue(
         error instanceof Error
           ? error.message
-          : "Failed to delete rent collection"
+          : "Failed to delete rent collection",
       );
     }
-  }
+  },
 );
 
 const rentCollectionsSlice = createSlice({
@@ -129,7 +129,7 @@ const rentCollectionsSlice = createSlice({
       .addCase(updateRentCollection.fulfilled, (state, action) => {
         state.isLoading = false;
         const index = state.rentCollections.findIndex(
-          (rc) => rc.id === action.payload.id
+          (rc) => rc.id === action.payload.id,
         );
         if (index !== -1) {
           state.rentCollections[index] = action.payload;
@@ -142,7 +142,7 @@ const rentCollectionsSlice = createSlice({
       // Delete Rent Collection
       .addCase(deleteRentCollection.fulfilled, (state, action) => {
         state.rentCollections = state.rentCollections.filter(
-          (rc) => rc.id !== action.payload
+          (rc) => rc.id !== action.payload,
         );
       });
   },

@@ -21,17 +21,17 @@ const initialState: ExpensesState = {
 export const fetchExpenses = createAsyncThunk(
   "expenses/fetchAll",
   async (
-    params: { startDate?: string; endDate?: string; propertyId?: number } = {},
-    { rejectWithValue }
+    params: { startDate?: string; endDate?: string; propertyId?: string } = {},
+    { rejectWithValue },
   ) => {
     try {
       return await expensesApi.getAll(params);
     } catch (error) {
       return rejectWithValue(
-        error instanceof Error ? error.message : "Failed to fetch expenses"
+        error instanceof Error ? error.message : "Failed to fetch expenses",
       );
     }
-  }
+  },
 );
 
 export const createExpense = createAsyncThunk(
@@ -41,40 +41,40 @@ export const createExpense = createAsyncThunk(
       return await expensesApi.create(data);
     } catch (error) {
       return rejectWithValue(
-        error instanceof Error ? error.message : "Failed to create expense"
+        error instanceof Error ? error.message : "Failed to create expense",
       );
     }
-  }
+  },
 );
 
 export const updateExpense = createAsyncThunk(
   "expenses/update",
   async (
-    { id, data }: { id: number; data: UpdateExpenseRequest },
-    { rejectWithValue }
+    { id, data }: { id: string; data: UpdateExpenseRequest },
+    { rejectWithValue },
   ) => {
     try {
       return await expensesApi.update(id, data);
     } catch (error) {
       return rejectWithValue(
-        error instanceof Error ? error.message : "Failed to update expense"
+        error instanceof Error ? error.message : "Failed to update expense",
       );
     }
-  }
+  },
 );
 
 export const deleteExpense = createAsyncThunk(
   "expenses/delete",
-  async (id: number, { rejectWithValue }) => {
+  async (id: string, { rejectWithValue }) => {
     try {
       await expensesApi.delete(id);
       return id;
     } catch (error) {
       return rejectWithValue(
-        error instanceof Error ? error.message : "Failed to delete expense"
+        error instanceof Error ? error.message : "Failed to delete expense",
       );
     }
-  }
+  },
 );
 
 const expensesSlice = createSlice({
@@ -117,7 +117,7 @@ const expensesSlice = createSlice({
       .addCase(updateExpense.fulfilled, (state, action) => {
         state.isLoading = false;
         const index = state.expenses.findIndex(
-          (e) => e.id === action.payload.id
+          (e) => e.id === action.payload.id,
         );
         if (index !== -1) {
           state.expenses[index] = action.payload;

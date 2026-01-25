@@ -21,17 +21,17 @@ const initialState: TenantsState = {
 export const fetchTenants = createAsyncThunk(
   "tenants/fetchAll",
   async (
-    params: { activeOnly?: boolean; propertyId?: number } = {},
-    { rejectWithValue }
+    params: { activeOnly?: boolean; propertyId?: string } = {},
+    { rejectWithValue },
   ) => {
     try {
       return await tenantsApi.getAll(params);
     } catch (error) {
       return rejectWithValue(
-        error instanceof Error ? error.message : "Failed to fetch tenants"
+        error instanceof Error ? error.message : "Failed to fetch tenants",
       );
     }
-  }
+  },
 );
 
 export const createTenant = createAsyncThunk(
@@ -41,67 +41,67 @@ export const createTenant = createAsyncThunk(
       return await tenantsApi.create(data);
     } catch (error) {
       return rejectWithValue(
-        error instanceof Error ? error.message : "Failed to create tenant"
+        error instanceof Error ? error.message : "Failed to create tenant",
       );
     }
-  }
+  },
 );
 
 export const updateTenant = createAsyncThunk(
   "tenants/update",
   async (
-    { id, data }: { id: number; data: UpdateTenantRequest },
-    { rejectWithValue }
+    { id, data }: { id: string; data: UpdateTenantRequest },
+    { rejectWithValue },
   ) => {
     try {
       return await tenantsApi.update(id, data);
     } catch (error) {
       return rejectWithValue(
-        error instanceof Error ? error.message : "Failed to update tenant"
+        error instanceof Error ? error.message : "Failed to update tenant",
       );
     }
-  }
+  },
 );
 
 export const archiveTenant = createAsyncThunk(
   "tenants/archive",
-  async (id: number, { rejectWithValue }) => {
+  async (id: string, { rejectWithValue }) => {
     try {
       await tenantsApi.archive(id);
       return id;
     } catch (error) {
       return rejectWithValue(
-        error instanceof Error ? error.message : "Failed to archive tenant"
+        error instanceof Error ? error.message : "Failed to archive tenant",
       );
     }
-  }
+  },
 );
 
 export const unarchiveTenant = createAsyncThunk(
   "tenants/unarchive",
-  async (id: number, { rejectWithValue }) => {
+  async (id: string, { rejectWithValue }) => {
     try {
       return await tenantsApi.update(id, { archived: false });
     } catch (error) {
       return rejectWithValue(
-        error instanceof Error ? error.message : "Failed to unarchive tenant"
+        error instanceof Error ? error.message : "Failed to unarchive tenant",
       );
     }
-  }
+  },
 );
 
 export const deleteTenant = createAsyncThunk(
   "tenants/delete",
-  async (id: number, { rejectWithValue }) => {
+  async (id: string, { rejectWithValue }) => {
     try {
       await tenantsApi.deletePermanent(id);
       return id;
     } catch (error) {
       return rejectWithValue(
-        error instanceof Error ? error.message : "Failed to delete tenant"
+        error instanceof Error ? error.message : "Failed to delete tenant",
       );
     }
-  }
+  },
 );
 
 const tenantsSlice = createSlice({
@@ -144,7 +144,7 @@ const tenantsSlice = createSlice({
       .addCase(updateTenant.fulfilled, (state, action) => {
         state.isLoading = false;
         const index = state.tenants.findIndex(
-          (t) => t.id === action.payload.id
+          (t) => t.id === action.payload.id,
         );
         if (index !== -1) {
           state.tenants[index] = action.payload;
@@ -164,7 +164,7 @@ const tenantsSlice = createSlice({
       // Unarchive Tenant
       .addCase(unarchiveTenant.fulfilled, (state, action) => {
         const index = state.tenants.findIndex(
-          (t) => t.id === action.payload.id
+          (t) => t.id === action.payload.id,
         );
         if (index !== -1) {
           state.tenants[index] = action.payload;

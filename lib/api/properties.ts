@@ -8,19 +8,19 @@ import type {
 export const propertiesApi = {
   getAll: (activeOnly = false) =>
     api.get<PropertyResponse[]>(
-      `/api/properties${activeOnly ? "?activeOnly=true" : ""}`
+      `/api/properties${activeOnly ? "?activeOnly=true" : ""}`,
     ),
 
-  getById: (id: number) => api.get<PropertyResponse>(`/api/properties/${id}`),
+  getById: (id: string) => api.get<PropertyResponse>(`/api/properties/${id}`),
 
   create: (data: CreatePropertyRequest) =>
     api.post<PropertyResponse>("/api/properties", data),
 
-  update: (id: number, data: UpdatePropertyRequest) =>
+  update: (id: string, data: UpdatePropertyRequest) =>
     api.put<PropertyResponse>(`/api/properties/${id}`, data),
 
-  archive: (id: number) => api.delete<void>(`/api/properties/${id}`),
+  archive: (id: string) => api.delete<void>(`/api/properties/${id}`),
 
-  deletePermanent: (id: number) =>
+  deletePermanent: (id: string) =>
     api.delete<void>(`/api/properties/${id}/permanent`),
 };
