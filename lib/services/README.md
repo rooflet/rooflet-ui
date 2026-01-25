@@ -267,13 +267,13 @@ Run the comprehensive test suite:
 
 ```bash
 # Run all tests
-pnpm test
+bun test
 
 # Run tests in watch mode
-pnpm test:watch
+bun test:watch
 
 # Run tests with UI
-pnpm test:ui
+bun test:ui
 ```
 
 The service includes 32 unit tests covering:

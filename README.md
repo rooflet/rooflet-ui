@@ -25,8 +25,7 @@ A modern property management dashboard built with Next.js, designed for landlord
 
 ## Prerequisites
 
-- Node.js 18+
-- pnpm (recommended) or npm
+- Bun 1.0+
 
 ## Getting Started
 
@@ -40,7 +39,7 @@ A modern property management dashboard built with Next.js, designed for landlord
 2. **Install dependencies**
 
    ```bash
-   pnpm install
+   bun install
    ```
 
 3. **Set up environment variables**
@@ -54,7 +53,7 @@ A modern property management dashboard built with Next.js, designed for landlord
 4. **Run the development server**
 
    ```bash
-   pnpm dev
+   bun dev
    ```
 
 5. **Open your browser**
