@@ -5,6 +5,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      x-bake:
+        provenance: false
     container_name: rooflet-ui-app
     restart: always
     environment:
