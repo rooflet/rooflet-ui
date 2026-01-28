@@ -9,7 +9,7 @@ import type {
   AvailableZipCodeResponse,
 } from "./types";
 
-export const MAX_ZIP_CODES = 10;
+export const MAX_ZIP_CODES = 100;
 
 export const zipCodePreferencesApi = {
   /**
@@ -17,7 +17,7 @@ export const zipCodePreferencesApi = {
    */
   getAll: async (): Promise<ZipCodePreferenceResponse[]> => {
     return api.get<ZipCodePreferenceResponse[]>(
-      "/api/user-preferences/zip-codes"
+      "/api/user-preferences/zip-codes",
     );
   },
 
@@ -25,11 +25,11 @@ export const zipCodePreferencesApi = {
    * Add a new zip code preference for the current user
    */
   add: async (
-    data: AddZipCodePreferenceRequest
+    data: AddZipCodePreferenceRequest,
   ): Promise<ZipCodePreferenceResponse> => {
     return api.post<ZipCodePreferenceResponse>(
       "/api/user-preferences/zip-codes",
-      data
+      data,
     );
   },
 
@@ -45,7 +45,7 @@ export const zipCodePreferencesApi = {
    */
   getAvailable: async (): Promise<AvailableZipCodeResponse[]> => {
     return api.get<AvailableZipCodeResponse[]>(
-      "/api/user-preferences/zip-codes/available"
+      "/api/user-preferences/zip-codes/available",
     );
   },
 };
