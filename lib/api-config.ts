@@ -1,5 +1,3 @@
-// Configure your backend API URL via environment variable
-// Default: http://localhost:8000 for development
 const API_BASE_URL = process.env.NEXT_PUBLIC_ROOFLET_BACKEND_URL;
 
 export const apiConfig = {
